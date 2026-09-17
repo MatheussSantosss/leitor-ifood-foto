@@ -3,7 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gerenciador de Pedidos iFood (Foto Rápida)</title>
+  <title>Gerenciador de Pedidos iFood (Corte & Foto)</title>
+  
+  <!-- CSS do CropperJS para seleção da área -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
+
   <style>
     * {
       box-sizing: border-box;
@@ -178,6 +182,43 @@
       margin-top: 40px;
     }
 
+    /* Modal para Cortar a Imagem */
+    #crop-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 1500;
+      flex-direction: column;
+    }
+
+    .crop-container {
+      flex: 1;
+      position: relative;
+      background: #000;
+      max-height: 80vh;
+    }
+
+    .crop-container img {
+      max-width: 100%;
+      display: block;
+    }
+
+    .crop-actions {
+      padding: 16px;
+      display: flex;
+      gap: 12px;
+      background: #111;
+    }
+
+    .btn-cancelar {
+      background: #444;
+      color: white;
+    }
+
     #loading-overlay {
       display: none;
       position: fixed;
@@ -185,7 +226,7 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      background: rgba(0, 0, 0, 0.8);
+      background: rgba(0, 0, 0, 0.85);
       z-index: 2000;
       flex-direction: column;
       align-items: center;
@@ -213,8 +254,8 @@
 <body>
 
   <header>
-    <h1>📸 Pedidos iFood (Leitura Rápida)</h1>
-    <p>Tire uma foto da comanda para capturar o localizador</p>
+    <h1>📸 Pedidos iFood (Seleção Rápida)</h1>
+    <p>Tire a foto e selecione a área do localizador</p>
   </header>
 
   <div class="manual-input-box">
@@ -233,17 +274,31 @@
     <button class="btn-escanear-fixo" onclick="abrirCameraFoto()">📸 TIRAR FOTO DA COMANDA</button>
   </div>
 
-  <input type="file" id="fotoInput" accept="image/*" capture="environment" style="display: none;" onchange="processarFoto(event)" />
+  <input type="file" id="fotoInput" accept="image/*" capture="environment" style="display: none;" onchange="carregarImagemParaCorte(event)" />
+
+  <!-- Tela de Recorte da Foto -->
+  <div id="crop-modal">
+    <div class="crop-container">
+      <img id="image-to-crop" src="" alt="Comanda" />
+    </div>
+    <div class="crop-actions">
+      <button class="btn btn-cancelar" onclick="fecharCropModal()">Cancelar</button>
+      <button class="btn btn-confirmar" onclick="processarCorte()">🔍 LER CÓDIGO CORTADO</button>
+    </div>
+  </div>
 
   <div id="loading-overlay">
     <div class="spinner"></div>
-    <p>Lendo comanda...</p>
+    <p>Lendo seleção...</p>
   </div>
 
+  <!-- Scripts: CropperJS + TesseractJS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
   <script>
     const IFOOD_CONFIRM_URL = "https://confirmacao-entrega-propria.ifood.com.br/"; 
+    let cropper = null;
 
     let pedidos = JSON.parse(localStorage.getItem('ifood_pedidos_foto')) || [];
 
@@ -346,73 +401,78 @@
       document.getElementById('fotoInput').click();
     }
 
-    async function processarFoto(event) {
+    function carregarImagemParaCorte(event) {
       const file = event.target.files[0];
       if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const image = document.getElementById('image-to-crop');
+        image.src = e.target.result;
+
+        document.getElementById('crop-modal').style.display = 'flex';
+
+        if (cropper) {
+          cropper.destroy();
+        }
+
+        // Inicializa a caixinha de corte interativa
+        cropper = new Cropper(image, {
+          viewMode: 1,
+          autoCropArea: 0.5,
+          responsive: true
+        });
+      };
+
+      reader.readAsDataURL(file);
+    }
+
+    function fecharCropModal() {
+      document.getElementById('crop-modal').style.display = 'none';
+      document.getElementById('fotoInput').value = '';
+      if (cropper) {
+        cropper.destroy();
+        cropper = null;
+      }
+    }
+
+    async function processarCorte() {
+      if (!cropper) return;
 
       const loading = document.getElementById('loading-overlay');
       loading.style.display = 'flex';
 
-      const img = new Image();
-      const reader = new FileReader();
+      // Pega apenas o pedaço de imagem selecionado na caixinha
+      const canvas = cropper.getCroppedCanvas({
+        maxWidth: 800,
+        maxHeight: 800
+      });
 
-      reader.onload = function(e) {
-        img.src = e.target.result;
-      };
+      fecharCropModal();
 
-      img.onload = async function() {
-        // Redimensiona a foto para processamento rápido no celular
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const MAX_WIDTH = 1000;
-        
-        let scale = MAX_WIDTH / img.width;
-        if (scale > 1) scale = 1;
+      try {
+        // Processa o OCR exclusivamente no retângulo recortado
+        const { data: { text } } = await Tesseract.recognize(canvas, 'eng');
+        const númerosEncontrados = text.replace(/\D/g, '');
 
-        canvas.width = img.width * scale;
-        canvas.height = img.height * scale;
+        // Tenta achar exatamente a sequência de 8 dígitos
+        const match = númerosEncontrados.match(/\d{8}/);
 
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-        // Converte imagem para preto e branco para acelerar a leitura do OCR
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const d = imgData.data;
-        for (let i = 0; i < d.length; i += 4) {
-          let gray = d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11;
-          d[i] = gray;
-          d[i + 1] = gray;
-          d[i + 2] = gray;
+        if (match) {
+          adicionarCodigo(match[0]);
+          if (navigator.vibrate) navigator.vibrate(200);
+        } else if (númerosEncontrados.length >= 8) {
+          // Se capturou os 8 números mesmo com algum caractere extra
+          adicionarCodigo(númerosEncontrados.substring(0, 8));
+          if (navigator.vibrate) navigator.vibrate(200);
+        } else {
+          alert('⚠️ Não encontramos os 8 dígitos na área recortada. Ajuste o quadrado cobrindo bem os números.');
         }
-        ctx.putImageData(imgData, 0, 0);
-
-        try {
-          const { data: { text } } = await Tesseract.recognize(canvas, 'eng');
-          const textoLimpo = text.replace(/\s+/g, ' ');
-
-          // Busca por "Localizador: 6332 8257", "ID:", "LOC:", etc.
-          const regexLocalizador = /(?:localizador|loc|id)[\s:]*(\d{4}[\s-]?\d{4}|\d{8})/i;
-          const match = textoLimpo.match(regexLocalizador);
-
-          if (match && match[1]) {
-            const codEncontrado = match[1].replace(/\D/g, '');
-            if (codEncontrado.length === 8) {
-              adicionarCodigo(codEncontrado);
-              if (navigator.vibrate) navigator.vibrate(200);
-            } else {
-              alert('⚠️ Não foi possível identificar os 8 dígitos. Tente tirar a foto mais de perto.');
-            }
-          } else {
-            alert('⚠️ Campo "Localizador" não localizado na foto. Foque bem na área do texto e tente novamente.');
-          }
-        } catch (err) {
-          alert('Erro ao processar a imagem.');
-        } finally {
-          loading.style.display = 'none';
-          event.target.value = '';
-        }
-      };
-
-      reader.readAsDataURL(file);
+      } catch (err) {
+        alert('Erro ao processar a imagem cortada.');
+      } finally {
+        loading.style.display = 'none';
+      }
     }
 
     render();
