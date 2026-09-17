@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gerenciador de Pedidos iFood (Foto)</title>
+  <title>Gerenciador de Pedidos iFood (Foto Rápida)</title>
   <style>
     * {
       box-sizing: border-box;
@@ -34,7 +34,6 @@
       color: #666;
     }
 
-    /* Entrada Manual e Ações Globais */
     .manual-input-box {
       background: #fff;
       padding: 12px;
@@ -179,7 +178,6 @@
       margin-top: 40px;
     }
 
-    /* Modal de Processamento / Indicator de Leitura */
     #loading-overlay {
       display: none;
       position: fixed;
@@ -215,11 +213,10 @@
 <body>
 
   <header>
-    <h1>📸 Pedidos iFood (Leitura por Foto)</h1>
+    <h1>📸 Pedidos iFood (Leitura Rápida)</h1>
     <p>Tire uma foto da comanda para capturar o localizador</p>
   </header>
 
-  <!-- Digitação Manual Rápida -->
   <div class="manual-input-box">
     <input type="number" id="manualCode" placeholder="Digitar 8 dígitos..." maxlength="8" />
     <button class="btn btn-confirmar" style="flex:0 0 auto; padding:0 16px;" onclick="addManual()">+ Add</button>
@@ -230,24 +227,19 @@
     <button onclick="limparConcluidos()" style="background:none; border:none; color:#888; font-size:0.8rem; text-decoration:underline;">Limpar Concluídos</button>
   </div>
 
-  <!-- Lista de Pedidos -->
   <div class="pedidos-list" id="pedidosList"></div>
 
-  <!-- Botão Fixo de Tirar Foto -->
   <div class="footer-actions">
     <button class="btn-escanear-fixo" onclick="abrirCameraFoto()">📸 TIRAR FOTO DA COMANDA</button>
   </div>
 
-  <!-- Input Oculto que Dispara a Câmera Nativa do Celular -->
   <input type="file" id="fotoInput" accept="image/*" capture="environment" style="display: none;" onchange="processarFoto(event)" />
 
-  <!-- Tela de Aguarde (Spinner) -->
   <div id="loading-overlay">
     <div class="spinner"></div>
-    <p>Identificando Localizador...</p>
+    <p>Lendo comanda...</p>
   </div>
 
-  <!-- Biblioteca Tesseract.js -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
   <script>
@@ -350,7 +342,6 @@
       salvar();
     }
 
-    // Ações da Câmera por Foto
     function abrirCameraFoto() {
       document.getElementById('fotoInput').click();
     }
@@ -362,13 +353,40 @@
       const loading = document.getElementById('loading-overlay');
       loading.style.display = 'flex';
 
+      const img = new Image();
       const reader = new FileReader();
 
-      reader.onload = async function(e) {
-        const imgData = e.target.result;
+      reader.onload = function(e) {
+        img.src = e.target.result;
+      };
+
+      img.onload = async function() {
+        // Redimensiona a foto para processamento rápido no celular
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const MAX_WIDTH = 1000;
+        
+        let scale = MAX_WIDTH / img.width;
+        if (scale > 1) scale = 1;
+
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // Converte imagem para preto e branco para acelerar a leitura do OCR
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const d = imgData.data;
+        for (let i = 0; i < d.length; i += 4) {
+          let gray = d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11;
+          d[i] = gray;
+          d[i + 1] = gray;
+          d[i + 2] = gray;
+        }
+        ctx.putImageData(imgData, 0, 0);
 
         try {
-          const { data: { text } } = await Tesseract.recognize(imgData, 'por+eng');
+          const { data: { text } } = await Tesseract.recognize(canvas, 'eng');
           const textoLimpo = text.replace(/\s+/g, ' ');
 
           // Busca por "Localizador: 6332 8257", "ID:", "LOC:", etc.
@@ -377,7 +395,6 @@
 
           if (match && match[1]) {
             const codEncontrado = match[1].replace(/\D/g, '');
-
             if (codEncontrado.length === 8) {
               adicionarCodigo(codEncontrado);
               if (navigator.vibrate) navigator.vibrate(200);
@@ -385,13 +402,13 @@
               alert('⚠️ Não foi possível identificar os 8 dígitos. Tente tirar a foto mais de perto.');
             }
           } else {
-            alert('⚠️ Campo "Localizador" não localizado na foto. Centralize bem a comanda e tente novamente.');
+            alert('⚠️ Campo "Localizador" não localizado na foto. Foque bem na área do texto e tente novamente.');
           }
         } catch (err) {
-          alert('Erro ao processar a foto. Tente novamente.');
+          alert('Erro ao processar a imagem.');
         } finally {
           loading.style.display = 'none';
-          event.target.value = ''; // Reseta input para permitir nova foto
+          event.target.value = '';
         }
       };
 
