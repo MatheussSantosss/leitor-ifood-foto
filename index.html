@@ -120,6 +120,11 @@
       justify-content: space-between;
       align-items: center;
       cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    .rota-header.concluida {
+      background: #2e7d32;
     }
 
     .rota-header.minimized {
@@ -475,6 +480,7 @@
         if (pedidos.length === 0 && nomeRota !== dadosRotas.rotaAtiva) return;
 
         const isMinimizada = !!dadosRotas.minimizadas[nomeRota];
+        const rotaTodaConcluida = pedidos.length > 0 && pedidos.every(p => p.status === 'concluido');
 
         const rotaDiv = document.createElement('div');
         rotaDiv.className = 'rota-group';
@@ -502,13 +508,17 @@
           `;
         });
 
+        const textoStatusRota = rotaTodaConcluida 
+          ? `✅ ${nomeRota} CONCLUÍDA (${pedidos.length} pedidos)` 
+          : `🛵 ${nomeRota} (${pedidos.length} ${pedidos.length === 1 ? 'pedido' : 'pedidos'})`;
+
         rotaDiv.innerHTML = `
-          <div class="rota-header ${isMinimizada ? 'minimized' : ''}" onclick="toggleMinimizarRota('${nomeRota}')">
+          <div class="rota-header ${rotaTodaConcluida ? 'concluida' : ''} ${isMinimizada ? 'minimized' : ''}" onclick="toggleMinimizarRota('${nomeRota}')">
             <div class="rota-header-left">
               <button class="btn-toggle-rota" aria-label="Minimizar Rota">
                 ${isMinimizada ? '▶' : '▼'}
               </button>
-              <span>🛵 ${nomeRota} (${pedidos.length} ${pedidos.length === 1 ? 'pedido' : 'pedidos'})</span>
+              <span>${textoStatusRota}</span>
             </div>
             <button class="btn-excluir-rota" onclick="event.stopPropagation(); excluirRota('${nomeRota}')">Limpar Rota X</button>
           </div>
@@ -586,7 +596,6 @@
         }
       }
 
-      // Adiciona no final da lista para manter a ordem crescente (1, 2, 3...)
       dadosRotas.rotas[rotaAtual].push({
         id: Date.now(),
         codigo: codLimpo,
@@ -625,7 +634,7 @@
       }
 
       dadosRotas.rotas[nomeRota][index].status = 'concluido';
-      localStorage.setItem('ifood_rotas_app', JSON.stringify(dadosRotas));
+      salvar();
     }
 
     function excluirPedido(nomeRota, index) {
