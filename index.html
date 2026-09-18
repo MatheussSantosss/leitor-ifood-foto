@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gerenciador de Pedidos iFood (Corte & Foto)</title>
+  <title>Gerenciador de Pedidos por Rota (iFood)</title>
   
   <!-- CSS do CropperJS para seleção da área -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
@@ -20,29 +20,72 @@
       background-color: #f4f4f6;
       color: #333;
       padding: 16px;
-      padding-bottom: 90px;
+      padding-bottom: 100px;
     }
 
     header {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
 
     header h1 {
-      font-size: 1.5rem;
+      font-size: 1.4rem;
       color: #ea1d2c;
     }
 
     header p {
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       color: #666;
     }
 
-    .manual-input-box {
+    /* Painel de Controle de Rota */
+    .rota-control-box {
       background: #fff;
       padding: 12px;
       border-radius: 12px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .rota-select-wrapper {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .rota-select-wrapper label {
+      font-weight: bold;
+      font-size: 0.9rem;
+      color: #444;
+      white-space: nowrap;
+    }
+
+    select.select-rota {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 1rem;
+      background: #fff;
+      font-weight: bold;
+      color: #ea1d2c;
+    }
+
+    .btn-nova-rota {
+      background: #333;
+      color: #fff;
+      border: none;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .manual-input-box {
       display: flex;
       gap: 8px;
     }
@@ -55,30 +98,51 @@
       font-size: 1rem;
     }
 
-    .section-title {
-      font-size: 1.1rem;
+    /* Estilos das Rotas e Cards */
+    .rota-group {
+      margin-bottom: 20px;
+    }
+
+    .rota-header {
+      background: #ea1d2c;
+      color: white;
+      padding: 10px 14px;
+      border-radius: 10px 10px 0 0;
       font-weight: bold;
-      margin-bottom: 12px;
+      font-size: 1rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
 
-    .pedidos-list {
+    .btn-excluir-rota {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+
+    .rota-body {
+      background: #eef0f3;
+      padding: 10px;
+      border-radius: 0 0 10px 10px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
     }
 
     .card-pedido {
       background: #fff;
-      border-radius: 12px;
-      padding: 16px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      border-radius: 10px;
+      padding: 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      border-left: 6px solid #ffaa00;
+      gap: 8px;
+      border-left: 5px solid #ffaa00;
     }
 
     .card-pedido.concluido {
@@ -94,13 +158,14 @@
 
     .card-header .title {
       font-weight: bold;
-      font-size: 1rem;
+      font-size: 0.9rem;
+      color: #555;
     }
 
     .badge {
       font-size: 0.75rem;
-      padding: 4px 8px;
-      border-radius: 12px;
+      padding: 3px 8px;
+      border-radius: 10px;
       font-weight: bold;
     }
 
@@ -115,7 +180,7 @@
     }
 
     .localizador-code {
-      font-size: 1.4rem;
+      font-size: 1.3rem;
       font-weight: bold;
       letter-spacing: 2px;
       color: #111;
@@ -124,7 +189,6 @@
     .card-actions {
       display: flex;
       gap: 8px;
-      margin-top: 5px;
     }
 
     .btn {
@@ -161,6 +225,7 @@
       bottom: 16px;
       left: 16px;
       right: 16px;
+      z-index: 1000;
     }
 
     .btn-escanear-fixo {
@@ -254,22 +319,30 @@
 <body>
 
   <header>
-    <h1>📸 Pedidos iFood (Seleção Rápida)</h1>
-    <p>Tire a foto e selecione a área do localizador</p>
+    <h1>🛵 Pedidos iFood (Por Rota)</h1>
+    <p>Selecione a Rota e adicione os localizadores</p>
   </header>
 
-  <div class="manual-input-box">
-    <input type="number" id="manualCode" placeholder="Digitar 8 dígitos..." maxlength="8" />
-    <button class="btn btn-confirmar" style="flex:0 0 auto; padding:0 16px;" onclick="addManual()">+ Add</button>
+  <!-- Seletor de Rota Ativa & Entrada -->
+  <div class="rota-control-box">
+    <div class="rota-select-wrapper">
+      <label for="selectRota">Adicionar em:</label>
+      <select id="selectRota" class="select-rota" onchange="alterarRotaAtiva(this.value)">
+        <!-- Preenchido via JS -->
+      </select>
+      <button class="btn-nova-rota" onclick="criarNovaRota()">+ Nova Rota</button>
+    </div>
+
+    <div class="manual-input-box">
+      <input type="number" id="manualCode" placeholder="Digitar 8 dígitos..." maxlength="8" />
+      <button class="btn btn-confirmar" style="flex:0 0 auto; padding:0 16px;" onclick="addManual()">+ Add</button>
+    </div>
   </div>
 
-  <div class="section-title">
-    <span>PEDIDOS PARA FINALIZAR</span>
-    <button onclick="limparConcluidos()" style="background:none; border:none; color:#888; font-size:0.8rem; text-decoration:underline;">Limpar Concluídos</button>
-  </div>
+  <!-- Lista de Rotas e Pedidos -->
+  <div id="rotasContainer"></div>
 
-  <div class="pedidos-list" id="pedidosList"></div>
-
+  <!-- Botão Fixo de Tirar Foto -->
   <div class="footer-actions">
     <button class="btn-escanear-fixo" onclick="abrirCameraFoto()">📸 TIRAR FOTO DA COMANDA</button>
   </div>
@@ -300,55 +373,141 @@
     const IFOOD_CONFIRM_URL = "https://confirmacao-entrega-propria.ifood.com.br/"; 
     let cropper = null;
 
-    let pedidos = JSON.parse(localStorage.getItem('ifood_pedidos_foto')) || [];
+    // Estrutura de dados com suporte a Rotas
+    let dadosRotas = JSON.parse(localStorage.getItem('ifood_rotas_app')) || {
+      rotaAtiva: "Rota 1",
+      rotas: {
+        "Rota 1": []
+      }
+    };
 
     function salvar() {
-      localStorage.setItem('ifood_pedidos_foto', JSON.stringify(pedidos));
+      localStorage.setItem('ifood_rotas_app', JSON.stringify(dadosRotas));
       render();
     }
 
     function render() {
-      const container = document.getElementById('pedidosList');
+      renderSeletorRotas();
+      renderListaRotas();
+    }
+
+    function renderSeletorRotas() {
+      const select = document.getElementById('selectRota');
+      select.innerHTML = '';
+
+      Object.keys(dadosRotas.rotas).forEach(nomeRota => {
+        const option = document.createElement('option');
+        option.value = nomeRota;
+        option.textContent = nomeRota;
+        if (nomeRota === dadosRotas.rotaAtiva) {
+          option.selected = true;
+        }
+        select.appendChild(option);
+      });
+    }
+
+    function renderListaRotas() {
+      const container = document.getElementById('rotasContainer');
       container.innerHTML = '';
 
-      if (pedidos.length === 0) {
-        container.innerHTML = `<div class="empty-state"><p>Nenhum pedido escaneado ainda.</p><p>Toque abaixo em "TIRAR FOTO DA COMANDA"</p></div>`;
-        return;
+      const nomesRotas = Object.keys(dadosRotas.rotas);
+
+      if (nomesRotas.length === 0 || nomesRotas.every(r => dadosRotas.rotas[r].length === 0)) {
+        container.innerHTML = `<div class="empty-state"><p>Nenhum pedido escaneado ainda.</p><p>Escolha a Rota e toque em "TIRAR FOTO DA COMANDA"</p></div>`;
       }
 
-      pedidos.forEach((p, index) => {
-        const card = document.createElement('div');
-        card.className = `card-pedido ${p.status === 'concluido' ? 'concluido' : ''}`;
-        
-        card.innerHTML = `
-          <div class="card-header">
-            <span class="title">Pedido #${pedidos.length - index}</span>
-            <span class="badge ${p.status}">${p.status === 'pendente' ? '🟢 Pendente' : '✅ Concluído'}</span>
+      nomesRotas.forEach(nomeRota => {
+        const pedidos = dadosRotas.rotas[nomeRota];
+        if (pedidos.length === 0 && nomeRota !== dadosRotas.rotaAtiva) return;
+
+        const rotaDiv = document.createElement('div');
+        rotaDiv.className = 'rota-group';
+
+        let htmlPedidos = '';
+        pedidos.forEach((p, index) => {
+          htmlPedidos += `
+            <div class="card-pedido ${p.status === 'concluido' ? 'concluido' : ''}">
+              <div class="card-header">
+                <span class="title">Pedido #${pedidos.length - index}</span>
+                <span class="badge ${p.status}">${p.status === 'pendente' ? '🟢 Pendente' : '✅ Concluído'}</span>
+              </div>
+              <div class="localizador-code">${p.codigo}</div>
+              <div class="card-actions">
+                <button class="btn btn-confirmar" onclick="confirmarEntrega('${nomeRota}', ${index})">
+                  🚀 CONFIRMAR ENTREGA
+                </button>
+                <button class="btn btn-excluir" onclick="excluirPedido('${nomeRota}', ${index})" title="Excluir">
+                  🗑️
+                </button>
+              </div>
+            </div>
+          `;
+        });
+
+        rotaDiv.innerHTML = `
+          <div class="rota-header">
+            <span>🛵 ${nomeRota} (${pedidos.length} ${pedidos.length === 1 ? 'pedido' : 'pedidos'})</span>
+            <button class="btn-excluir-rota" onclick="excluirRota('${nomeRota}')">Limpar Rota X</button>
           </div>
-          <div class="localizador-code">${p.codigo}</div>
-          <div class="card-actions">
-            <button class="btn btn-confirmar" onclick="confirmarEntrega(${index})">
-              🚀 CONFIRMAR ENTREGA
-            </button>
-            <button class="btn btn-excluir" onclick="excluirPedido(${index})" title="Excluir">
-              🗑️
-            </button>
+          <div class="rota-body">
+            ${htmlPedidos || '<p style="text-align:center; color:#888; padding:10px; font-size:0.85rem;">Nenhum pedido nesta rota.</p>'}
           </div>
         `;
-        container.appendChild(card);
+
+        container.appendChild(rotaDiv);
       });
+    }
+
+    function alterarRotaAtiva(novaRota) {
+      dadosRotas.rotaAtiva = novaRota;
+      salvar();
+    }
+
+    function criarNovaRota() {
+      const numRotas = Object.keys(dadosRotas.rotas).length + 1;
+      const novoNome = `Rota ${numRotas}`;
+
+      if (!dadosRotas.rotas[novoNome]) {
+        dadosRotas.rotas[novoNome] = [];
+      }
+      dadosRotas.rotaAtiva = novoNome;
+      salvar();
+    }
+
+    function excluirRota(nomeRota) {
+      if (confirm(`Deseja limpar todos os pedidos da ${nomeRota}?`)) {
+        delete dadosRotas.rotas[nomeRota];
+
+        const chaves = Object.keys(dadosRotas.rotas);
+        if (chaves.length === 0) {
+          dadosRotas.rotas["Rota 1"] = [];
+          dadosRotas.rotaAtiva = "Rota 1";
+        } else if (!dadosRotas.rotas[dadosRotas.rotaAtiva]) {
+          dadosRotas.rotaAtiva = chaves[0];
+        }
+
+        salvar();
+      }
     }
 
     function adicionarCodigo(codigo) {
       const codLimpo = codigo.replace(/\D/g, '');
       if (codLimpo.length !== 8) return;
 
-      if (pedidos.some(p => p.codigo === codLimpo)) {
-        alert('Este código já foi adicionado à lista.');
-        return;
+      const rotaAtual = dadosRotas.rotaAtiva;
+      if (!dadosRotas.rotas[rotaAtual]) {
+        dadosRotas.rotas[rotaAtual] = [];
       }
 
-      pedidos.unshift({
+      // Verifica duplicidade em todas as rotas
+      for (let r in dadosRotas.rotas) {
+        if (dadosRotas.rotas[r].some(p => p.codigo === codLimpo)) {
+          alert(`Este código já foi adicionado na ${r}.`);
+          return;
+        }
+      }
+
+      dadosRotas.rotas[rotaAtual].unshift({
         id: Date.now(),
         codigo: codLimpo,
         status: 'pendente'
@@ -367,8 +526,8 @@
       }
     }
 
-    async function confirmarEntrega(index) {
-      const pedido = pedidos[index];
+    async function confirmarEntrega(nomeRota, index) {
+      const pedido = dadosRotas.rotas[nomeRota][index];
       
       try {
         await navigator.clipboard.writeText(pedido.codigo);
@@ -381,19 +540,14 @@
         document.body.removeChild(textArea);
       }
 
-      pedidos[index].status = 'concluido';
+      dadosRotas.rotas[nomeRota][index].status = 'concluido';
       salvar();
 
       window.open(IFOOD_CONFIRM_URL, '_blank');
     }
 
-    function excluirPedido(index) {
-      pedidos.splice(index, 1);
-      salvar();
-    }
-
-    function limparConcluidos() {
-      pedidos = pedidos.filter(p => p.status === 'pendente');
+    function excluirPedido(nomeRota, index) {
+      dadosRotas.rotas[nomeRota].splice(index, 1);
       salvar();
     }
 
@@ -416,7 +570,6 @@
           cropper.destroy();
         }
 
-        // Inicializa a caixinha de corte interativa
         cropper = new Cropper(image, {
           viewMode: 1,
           autoCropArea: 0.5,
@@ -442,7 +595,6 @@
       const loading = document.getElementById('loading-overlay');
       loading.style.display = 'flex';
 
-      // Pega apenas o pedaço de imagem selecionado na caixinha
       const canvas = cropper.getCroppedCanvas({
         maxWidth: 800,
         maxHeight: 800
@@ -451,18 +603,15 @@
       fecharCropModal();
 
       try {
-        // Processa o OCR exclusivamente no retângulo recortado
         const { data: { text } } = await Tesseract.recognize(canvas, 'eng');
         const númerosEncontrados = text.replace(/\D/g, '');
 
-        // Tenta achar exatamente a sequência de 8 dígitos
         const match = númerosEncontrados.match(/\d{8}/);
 
         if (match) {
           adicionarCodigo(match[0]);
           if (navigator.vibrate) navigator.vibrate(200);
         } else if (númerosEncontrados.length >= 8) {
-          // Se capturou os 8 números mesmo com algum caractere extra
           adicionarCodigo(númerosEncontrados.substring(0, 8));
           if (navigator.vibrate) navigator.vibrate(200);
         } else {
