@@ -177,13 +177,12 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
-      border-left: 6px solid #ffaa00;
+      border-left: 5px solid #ffaa00;
     }
 
     .card-pedido.concluido {
-      border-left-color: #2e7d32 !important;
-      background-color: #f0fdf4;
-      opacity: 0.85;
+      border-left-color: #2e7d32;
+      background-color: #f2f9f3;
     }
 
     .card-header {
@@ -246,15 +245,13 @@
       justify-content: center;
       gap: 6px;
       font-size: 0.9rem;
+      text-decoration: none;
+      text-align: center;
     }
 
     .btn-confirmar {
       background: #ea1d2c;
       color: #fff;
-    }
-
-    .btn-confirmar:active {
-      background: #c6111e;
     }
 
     .btn-concluido {
@@ -483,23 +480,21 @@
         rotaDiv.className = 'rota-group';
 
         let htmlPedidos = '';
-        pedidos.forEach((p) => {
+        pedidos.forEach((p, index) => {
           const isConcluido = p.status === 'concluido';
           htmlPedidos += `
             <div class="card-pedido ${isConcluido ? 'concluido' : ''}">
               <div class="card-header">
-                <span class="title">Pedido #${p.numeroPedido || '1'}</span>
-                <span class="badge ${isConcluido ? 'concluido' : 'pendente'}">
-                  ${isConcluido ? '✅ Concluído' : '🟢 Pendente'}
-                </span>
+                <span class="title">Pedido #${pedidos.length - index}</span>
+                <span class="badge ${p.status}">${isConcluido ? '✅ Concluído' : '🟢 Pendente'}</span>
               </div>
               ${p.cliente ? `<div class="cliente-nome">👤 ${p.cliente}</div>` : ''}
               <div class="localizador-code">${p.codigo}</div>
               <div class="card-actions">
-                <button class="btn ${isConcluido ? 'btn-concluido' : 'btn-confirmar'}" onclick="confirmarEntrega('${nomeRota}', '${p.id}')">
+                <a href="${IFOOD_CONFIRM_URL}" target="_blank" rel="noopener noreferrer" class="btn ${isConcluido ? 'btn-concluido' : 'btn-confirmar'}" onclick="confirmarEntrega(event, '${nomeRota}', ${index})">
                   ${isConcluido ? '✅ COPIADO (REABRIR)' : '🚀 CONFIRMAR ENTREGA'}
-                </button>
-                <button class="btn btn-excluir" onclick="excluirPedido('${nomeRota}', '${p.id}')" title="Excluir">
+                </a>
+                <button class="btn btn-excluir" onclick="excluirPedido('${nomeRota}', ${index})" title="Excluir">
                   🗑️
                 </button>
               </div>
@@ -591,11 +586,8 @@
         }
       }
 
-      const proximoNumero = dadosRotas.rotas[rotaAtual].length + 1;
-
       dadosRotas.rotas[rotaAtual].unshift({
-        id: Date.now().toString(),
-        numeroPedido: proximoNumero,
+        id: Date.now(),
         codigo: codLimpo,
         cliente: nomeCliente.trim(),
         status: 'pendente'
@@ -617,12 +609,10 @@
       }
     }
 
-    async function confirmarEntrega(nomeRota, pedidoId) {
-      const pedidos = dadosRotas.rotas[nomeRota];
-      const pedido = pedidos.find(p => p.id === pedidoId);
+    async function confirmarEntrega(event, nomeRota, index) {
+      const pedido = dadosRotas.rotas[nomeRota][index];
       
-      if (!pedido) return;
-
+      // Copia o código para a área de transferência
       try {
         await navigator.clipboard.writeText(pedido.codigo);
       } catch (err) {
@@ -634,15 +624,15 @@
         document.body.removeChild(textArea);
       }
 
-      // Atualiza o status para concluído no banco de dados
-      pedido.status = 'concluido';
-      salvar();
-
-      window.open(IFOOD_CONFIRM_URL, '_blank');
+      // Marca o pedido como concluído
+      dadosRotas.rotas[nomeRota][index].status = 'concluido';
+      localStorage.setItem('ifood_rotas_app', JSON.stringify(dadosRotas));
+      
+      // Não cancelamos a navegação padrão do link <a>, permitindo que o navegador abra o link sem bloquear
     }
 
-    function excluirPedido(nomeRota, pedidoId) {
-      dadosRotas.rotas[nomeRota] = dadosRotas.rotas[nomeRota].filter(p => p.id !== pedidoId);
+    function excluirPedido(nomeRota, index) {
+      dadosRotas.rotas[nomeRota].splice(index, 1);
       salvar();
     }
 
