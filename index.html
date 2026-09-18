@@ -20,7 +20,7 @@
       background-color: #f4f4f6;
       color: #333;
       padding: 16px;
-      padding-bottom: 100px;
+      padding-bottom: 110px;
     }
 
     header {
@@ -100,7 +100,7 @@
 
     /* Estilos das Rotas e Cards */
     .rota-group {
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
 
     .rota-header {
@@ -113,13 +113,38 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      cursor: pointer;
+    }
+
+    .rota-header.minimized {
+      border-radius: 10px;
+    }
+
+    .rota-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-toggle-rota {
+      background: rgba(255, 255, 255, 0.25);
+      border: none;
+      color: white;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
     }
 
     .btn-excluir-rota {
       background: rgba(255, 255, 255, 0.2);
       border: none;
       color: white;
-      padding: 4px 8px;
+      padding: 6px 10px;
       border-radius: 6px;
       font-size: 0.75rem;
       cursor: pointer;
@@ -132,6 +157,10 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
+    }
+
+    .rota-body.oculto {
+      display: none;
     }
 
     .card-pedido {
@@ -373,13 +402,18 @@
     const IFOOD_CONFIRM_URL = "https://confirmacao-entrega-propria.ifood.com.br/"; 
     let cropper = null;
 
-    // Estrutura de dados com suporte a Rotas
+    // Estrutura de dados com suporte a Rotas e Minimização
     let dadosRotas = JSON.parse(localStorage.getItem('ifood_rotas_app')) || {
       rotaAtiva: "Rota 1",
       rotas: {
         "Rota 1": []
-      }
+      },
+      minimizadas: {}
     };
+
+    if (!dadosRotas.minimizadas) {
+      dadosRotas.minimizadas = {};
+    }
 
     function salvar() {
       localStorage.setItem('ifood_rotas_app', JSON.stringify(dadosRotas));
@@ -395,7 +429,10 @@
       const select = document.getElementById('selectRota');
       select.innerHTML = '';
 
-      Object.keys(dadosRotas.rotas).forEach(nomeRota => {
+      // Ordena no seletor da mais recente para a mais antiga
+      const nomesRotas = Object.keys(dadosRotas.rotas).reverse();
+
+      nomesRotas.forEach(nomeRota => {
         const option = document.createElement('option');
         option.value = nomeRota;
         option.textContent = nomeRota;
@@ -410,7 +447,8 @@
       const container = document.getElementById('rotasContainer');
       container.innerHTML = '';
 
-      const nomesRotas = Object.keys(dadosRotas.rotas);
+      // Mostra as rotas mais novas NO TOPO (ordem reversa)
+      const nomesRotas = Object.keys(dadosRotas.rotas).reverse();
 
       if (nomesRotas.length === 0 || nomesRotas.every(r => dadosRotas.rotas[r].length === 0)) {
         container.innerHTML = `<div class="empty-state"><p>Nenhum pedido escaneado ainda.</p><p>Escolha a Rota e toque em "TIRAR FOTO DA COMANDA"</p></div>`;
@@ -419,6 +457,8 @@
       nomesRotas.forEach(nomeRota => {
         const pedidos = dadosRotas.rotas[nomeRota];
         if (pedidos.length === 0 && nomeRota !== dadosRotas.rotaAtiva) return;
+
+        const isMinimizada = !!dadosRotas.minimizadas[nomeRota];
 
         const rotaDiv = document.createElement('div');
         rotaDiv.className = 'rota-group';
@@ -445,11 +485,16 @@
         });
 
         rotaDiv.innerHTML = `
-          <div class="rota-header">
-            <span>🛵 ${nomeRota} (${pedidos.length} ${pedidos.length === 1 ? 'pedido' : 'pedidos'})</span>
-            <button class="btn-excluir-rota" onclick="excluirRota('${nomeRota}')">Limpar Rota X</button>
+          <div class="rota-header ${isMinimizada ? 'minimized' : ''}" onclick="toggleMinimizarRota('${nomeRota}')">
+            <div class="rota-header-left">
+              <button class="btn-toggle-rota" aria-label="Minimizar Rota">
+                ${isMinimizada ? '▶' : '▼'}
+              </button>
+              <span>🛵 ${nomeRota} (${pedidos.length} ${pedidos.length === 1 ? 'pedido' : 'pedidos'})</span>
+            </div>
+            <button class="btn-excluir-rota" onclick="event.stopPropagation(); excluirRota('${nomeRota}')">Limpar Rota X</button>
           </div>
-          <div class="rota-body">
+          <div class="rota-body ${isMinimizada ? 'oculto' : ''}">
             ${htmlPedidos || '<p style="text-align:center; color:#888; padding:10px; font-size:0.85rem;">Nenhum pedido nesta rota.</p>'}
           </div>
         `;
@@ -458,8 +503,21 @@
       });
     }
 
+    function toggleMinimizarRota(nomeRota) {
+      if (dadosRotas.minimizadas[nomeRota]) {
+        delete dadosRotas.minimizadas[nomeRota];
+      } else {
+        dadosRotas.minimizadas[nomeRota] = true;
+      }
+      salvar();
+    }
+
     function alterarRotaAtiva(novaRota) {
       dadosRotas.rotaAtiva = novaRota;
+      // Garante que a rota selecionada não fique minimizada
+      if (dadosRotas.minimizadas[novaRota]) {
+        delete dadosRotas.minimizadas[novaRota];
+      }
       salvar();
     }
 
@@ -477,13 +535,14 @@
     function excluirRota(nomeRota) {
       if (confirm(`Deseja limpar todos os pedidos da ${nomeRota}?`)) {
         delete dadosRotas.rotas[nomeRota];
+        delete dadosRotas.minimizadas[nomeRota];
 
         const chaves = Object.keys(dadosRotas.rotas);
         if (chaves.length === 0) {
           dadosRotas.rotas["Rota 1"] = [];
           dadosRotas.rotaAtiva = "Rota 1";
         } else if (!dadosRotas.rotas[dadosRotas.rotaAtiva]) {
-          dadosRotas.rotaAtiva = chaves[0];
+          dadosRotas.rotaAtiva = chaves[chaves.length - 1];
         }
 
         salvar();
@@ -497,6 +556,11 @@
       const rotaAtual = dadosRotas.rotaAtiva;
       if (!dadosRotas.rotas[rotaAtual]) {
         dadosRotas.rotas[rotaAtual] = [];
+      }
+
+      // Desminimiza a rota ao adicionar item novo
+      if (dadosRotas.minimizadas[rotaAtual]) {
+        delete dadosRotas.minimizadas[rotaAtual];
       }
 
       // Verifica duplicidade em todas as rotas
