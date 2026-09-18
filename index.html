@@ -177,12 +177,13 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
-      border-left: 5px solid #ffaa00;
+      border-left: 6px solid #ffaa00;
     }
 
     .card-pedido.concluido {
-      border-left-color: #2e7d32;
-      opacity: 0.75;
+      border-left-color: #2e7d32 !important;
+      background-color: #f0fdf4;
+      opacity: 0.85;
     }
 
     .card-header {
@@ -254,6 +255,11 @@
 
     .btn-confirmar:active {
       background: #c6111e;
+    }
+
+    .btn-concluido {
+      background: #2e7d32;
+      color: #fff;
     }
 
     .btn-excluir {
@@ -418,7 +424,6 @@
     const IFOOD_CONFIRM_URL = "https://confirmacao-entrega-propria.ifood.com.br/"; 
     let cropper = null;
 
-    // Estrutura de dados com suporte a Rotas, Minimização e Nomes
     let dadosRotas = JSON.parse(localStorage.getItem('ifood_rotas_app')) || {
       rotaAtiva: "Rota 1",
       rotas: {
@@ -445,7 +450,6 @@
       const select = document.getElementById('selectRota');
       select.innerHTML = '';
 
-      // Ordena no seletor da mais recente para a mais antiga
       const nomesRotas = Object.keys(dadosRotas.rotas).reverse();
 
       nomesRotas.forEach(nomeRota => {
@@ -463,7 +467,6 @@
       const container = document.getElementById('rotasContainer');
       container.innerHTML = '';
 
-      // Mostra as rotas mais novas NO TOPO (ordem reversa)
       const nomesRotas = Object.keys(dadosRotas.rotas).reverse();
 
       if (nomesRotas.length === 0 || nomesRotas.every(r => dadosRotas.rotas[r].length === 0)) {
@@ -480,20 +483,23 @@
         rotaDiv.className = 'rota-group';
 
         let htmlPedidos = '';
-        pedidos.forEach((p, index) => {
+        pedidos.forEach((p) => {
+          const isConcluido = p.status === 'concluido';
           htmlPedidos += `
-            <div class="card-pedido ${p.status === 'concluido' ? 'concluido' : ''}">
+            <div class="card-pedido ${isConcluido ? 'concluido' : ''}">
               <div class="card-header">
-                <span class="title">Pedido #${pedidos.length - index}</span>
-                <span class="badge ${p.status}">${p.status === 'pendente' ? '🟢 Pendente' : '✅ Concluído'}</span>
+                <span class="title">Pedido #${p.numeroPedido || '1'}</span>
+                <span class="badge ${isConcluido ? 'concluido' : 'pendente'}">
+                  ${isConcluido ? '✅ Concluído' : '🟢 Pendente'}
+                </span>
               </div>
               ${p.cliente ? `<div class="cliente-nome">👤 ${p.cliente}</div>` : ''}
               <div class="localizador-code">${p.codigo}</div>
               <div class="card-actions">
-                <button class="btn btn-confirmar" onclick="confirmarEntrega('${nomeRota}', ${index})">
-                  🚀 CONFIRMAR ENTREGA
+                <button class="btn ${isConcluido ? 'btn-concluido' : 'btn-confirmar'}" onclick="confirmarEntrega('${nomeRota}', '${p.id}')">
+                  ${isConcluido ? '✅ COPIADO (REABRIR)' : '🚀 CONFIRMAR ENTREGA'}
                 </button>
-                <button class="btn btn-excluir" onclick="excluirPedido('${nomeRota}', ${index})" title="Excluir">
+                <button class="btn btn-excluir" onclick="excluirPedido('${nomeRota}', '${p.id}')" title="Excluir">
                   🗑️
                 </button>
               </div>
@@ -585,8 +591,11 @@
         }
       }
 
+      const proximoNumero = dadosRotas.rotas[rotaAtual].length + 1;
+
       dadosRotas.rotas[rotaAtual].unshift({
-        id: Date.now(),
+        id: Date.now().toString(),
+        numeroPedido: proximoNumero,
         codigo: codLimpo,
         cliente: nomeCliente.trim(),
         status: 'pendente'
@@ -608,9 +617,12 @@
       }
     }
 
-    async function confirmarEntrega(nomeRota, index) {
-      const pedido = dadosRotas.rotas[nomeRota][index];
+    async function confirmarEntrega(nomeRota, pedidoId) {
+      const pedidos = dadosRotas.rotas[nomeRota];
+      const pedido = pedidos.find(p => p.id === pedidoId);
       
+      if (!pedido) return;
+
       try {
         await navigator.clipboard.writeText(pedido.codigo);
       } catch (err) {
@@ -622,14 +634,15 @@
         document.body.removeChild(textArea);
       }
 
-      dadosRotas.rotas[nomeRota][index].status = 'concluido';
+      // Atualiza o status para concluído no banco de dados
+      pedido.status = 'concluido';
       salvar();
 
       window.open(IFOOD_CONFIRM_URL, '_blank');
     }
 
-    function excluirPedido(nomeRota, index) {
-      dadosRotas.rotas[nomeRota].splice(index, 1);
+    function excluirPedido(nomeRota, pedidoId) {
+      dadosRotas.rotas[nomeRota] = dadosRotas.rotas[nomeRota].filter(p => p.id !== pedidoId);
       salvar();
     }
 
