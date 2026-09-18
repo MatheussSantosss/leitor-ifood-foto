@@ -115,16 +115,11 @@
       padding: 10px 14px;
       border-radius: 10px 10px 0 0;
       font-weight: bold;
-      font-size: 0.95rem;
+      font-size: 1rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
       cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-
-    .rota-header.concluida {
-      background: #2e7d32;
     }
 
     .rota-header.minimized {
@@ -187,7 +182,7 @@
 
     .card-pedido.concluido {
       border-left-color: #2e7d32;
-      opacity: 0.85;
+      opacity: 0.75;
     }
 
     .card-header {
@@ -203,9 +198,10 @@
     }
 
     .cliente-nome {
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: bold;
-      color: #111;
+      color: #ea1d2c;
+      margin-top: 2px;
     }
 
     .badge {
@@ -226,10 +222,10 @@
     }
 
     .localizador-code {
-      font-size: 1.2rem;
+      font-size: 1.3rem;
       font-weight: bold;
-      letter-spacing: 1.5px;
-      color: #ea1d2c;
+      letter-spacing: 2px;
+      color: #111;
     }
 
     .card-actions {
@@ -380,9 +376,9 @@
     </div>
 
     <div class="manual-input-box">
-      <input type="text" id="manualCliente" placeholder="Nome do cliente (Opcional)..." />
+      <input type="text" id="clienteNomeInput" placeholder="Nome do Cliente (opcional)..." />
       <div class="input-row">
-        <input type="number" id="manualCode" placeholder="Localizador (8 dígitos)..." maxlength="8" />
+        <input type="number" id="manualCode" placeholder="Digitar 8 dígitos..." maxlength="8" />
         <button class="btn btn-confirmar" style="flex:0 0 auto; padding:0 16px;" onclick="addManual()">+ Add</button>
       </div>
     </div>
@@ -422,7 +418,7 @@
     const IFOOD_CONFIRM_URL = "https://confirmacao-entrega-propria.ifood.com.br/"; 
     let cropper = null;
 
-    // Estrutura de dados com suporte a Rotas, Nome e Minimização
+    // Estrutura de dados com suporte a Rotas, Minimização e Nomes
     let dadosRotas = JSON.parse(localStorage.getItem('ifood_rotas_app')) || {
       rotaAtiva: "Rota 1",
       rotas: {
@@ -479,25 +475,20 @@
         if (pedidos.length === 0 && nomeRota !== dadosRotas.rotaAtiva) return;
 
         const isMinimizada = !!dadosRotas.minimizadas[nomeRota];
-        
-        // Verifica se TODOS os pedidos da rota foram concluídos
-        const rotaTotalmenteConcluida = pedidos.length > 0 && pedidos.every(p => p.status === 'concluido');
 
         const rotaDiv = document.createElement('div');
         rotaDiv.className = 'rota-group';
 
         let htmlPedidos = '';
         pedidos.forEach((p, index) => {
-          const nomeClienteHtml = p.cliente ? `<div class="cliente-nome">👤 ${p.cliente}</div>` : '';
-
           htmlPedidos += `
             <div class="card-pedido ${p.status === 'concluido' ? 'concluido' : ''}">
               <div class="card-header">
                 <span class="title">Pedido #${pedidos.length - index}</span>
                 <span class="badge ${p.status}">${p.status === 'pendente' ? '🟢 Pendente' : '✅ Concluído'}</span>
               </div>
-              ${nomeClienteHtml}
-              <div class="localizador-code">🔑 ${p.codigo}</div>
+              ${p.cliente ? `<div class="cliente-nome">👤 ${p.cliente}</div>` : ''}
+              <div class="localizador-code">${p.codigo}</div>
               <div class="card-actions">
                 <button class="btn btn-confirmar" onclick="confirmarEntrega('${nomeRota}', ${index})">
                   🚀 CONFIRMAR ENTREGA
@@ -510,16 +501,13 @@
           `;
         });
 
-        // Define o texto do status da rota
-        const statusTexto = rotaTotalmenteConcluida ? '✅ Concluída' : '🛵 Em andamento';
-
         rotaDiv.innerHTML = `
-          <div class="rota-header ${rotaTotalmenteConcluida ? 'concluida' : ''} ${isMinimizada ? 'minimized' : ''}" onclick="toggleMinimizarRota('${nomeRota}')">
+          <div class="rota-header ${isMinimizada ? 'minimized' : ''}" onclick="toggleMinimizarRota('${nomeRota}')">
             <div class="rota-header-left">
               <button class="btn-toggle-rota" aria-label="Minimizar Rota">
                 ${isMinimizada ? '▶' : '▼'}
               </button>
-              <span>${nomeRota} - ${statusTexto} (${pedidos.length} ${pedidos.length === 1 ? 'pedido' : 'pedidos'})</span>
+              <span>🛵 ${nomeRota} (${pedidos.length} ${pedidos.length === 1 ? 'pedido' : 'pedidos'})</span>
             </div>
             <button class="btn-excluir-rota" onclick="event.stopPropagation(); excluirRota('${nomeRota}')">Limpar Rota X</button>
           </div>
@@ -543,7 +531,6 @@
 
     function alterarRotaAtiva(novaRota) {
       dadosRotas.rotaAtiva = novaRota;
-      // Garante que a rota selecionada não fique minimizada
       if (dadosRotas.minimizadas[novaRota]) {
         delete dadosRotas.minimizadas[novaRota];
       }
@@ -587,12 +574,10 @@
         dadosRotas.rotas[rotaAtual] = [];
       }
 
-      // Desminimiza a rota ao adicionar item novo
       if (dadosRotas.minimizadas[rotaAtual]) {
         delete dadosRotas.minimizadas[rotaAtual];
       }
 
-      // Verifica duplicidade em todas as rotas
       for (let r in dadosRotas.rotas) {
         if (dadosRotas.rotas[r].some(p => p.codigo === codLimpo)) {
           alert(`Este código já foi adicionado na ${r}.`);
@@ -612,12 +597,12 @@
 
     function addManual() {
       const inputCode = document.getElementById('manualCode');
-      const inputCliente = document.getElementById('manualCliente');
+      const inputNome = document.getElementById('clienteNomeInput');
 
       if (inputCode.value.length === 8) {
-        adicionarCodigo(inputCode.value, inputCliente.value);
+        adicionarCodigo(inputCode.value, inputNome.value);
         inputCode.value = '';
-        inputCliente.value = '';
+        inputNome.value = '';
       } else {
         alert('O código do localizador deve conter exatamente 8 números.');
       }
@@ -626,7 +611,6 @@
     async function confirmarEntrega(nomeRota, index) {
       const pedido = dadosRotas.rotas[nomeRota][index];
       
-      // Copia SOMENTE os 8 números do localizador
       try {
         await navigator.clipboard.writeText(pedido.codigo);
       } catch (err) {
@@ -705,15 +689,17 @@
         const númerosEncontrados = text.replace(/\D/g, '');
 
         const match = númerosEncontrados.match(/\d{8}/);
-        const nomePreenchido = document.getElementById('manualCliente').value;
+        let codigoExtraido = null;
 
         if (match) {
-          adicionarCodigo(match[0], nomePreenchido);
-          document.getElementById('manualCliente').value = '';
-          if (navigator.vibrate) navigator.vibrate(200);
+          codigoExtraido = match[0];
         } else if (númerosEncontrados.length >= 8) {
-          adicionarCodigo(númerosEncontrados.substring(0, 8), nomePreenchido);
-          document.getElementById('manualCliente').value = '';
+          codigoExtraido = númerosEncontrados.substring(0, 8);
+        }
+
+        if (codigoExtraido) {
+          const nomePrompt = prompt("Digite o nome do cliente (opcional):", "") || "";
+          adicionarCodigo(codigoExtraido, nomePrompt);
           if (navigator.vibrate) navigator.vibrate(200);
         } else {
           alert('⚠️ Não encontramos os 8 dígitos na área recortada. Ajuste o quadrado cobrindo bem os números.');
