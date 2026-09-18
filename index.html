@@ -87,6 +87,12 @@
 
     .manual-input-box {
       display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .input-row {
+      display: flex;
       gap: 8px;
     }
 
@@ -95,7 +101,7 @@
       padding: 10px;
       border: 1px solid #ddd;
       border-radius: 8px;
-      font-size: 1rem;
+      font-size: 0.95rem;
     }
 
     /* Estilos das Rotas e Cards */
@@ -103,7 +109,6 @@
       margin-bottom: 16px;
     }
 
-    /* Estilo Base da Barra Vermelha (Em Andamento) */
     .rota-header {
       background: #ea1d2c;
       color: white;
@@ -118,7 +123,6 @@
       transition: background-color 0.3s ease;
     }
 
-    /* Estilo Verde quando Rota estiver Concluída */
     .rota-header.concluida {
       background: #2e7d32;
     }
@@ -198,6 +202,12 @@
       color: #555;
     }
 
+    .cliente-nome {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #111;
+    }
+
     .badge {
       font-size: 0.75rem;
       padding: 3px 8px;
@@ -216,10 +226,10 @@
     }
 
     .localizador-code {
-      font-size: 1.3rem;
+      font-size: 1.2rem;
       font-weight: bold;
-      letter-spacing: 2px;
-      color: #111;
+      letter-spacing: 1.5px;
+      color: #ea1d2c;
     }
 
     .card-actions {
@@ -370,8 +380,11 @@
     </div>
 
     <div class="manual-input-box">
-      <input type="number" id="manualCode" placeholder="Digitar 8 dígitos..." maxlength="8" />
-      <button class="btn btn-confirmar" style="flex:0 0 auto; padding:0 16px;" onclick="addManual()">+ Add</button>
+      <input type="text" id="manualCliente" placeholder="Nome do cliente (Opcional)..." />
+      <div class="input-row">
+        <input type="number" id="manualCode" placeholder="Localizador (8 dígitos)..." maxlength="8" />
+        <button class="btn btn-confirmar" style="flex:0 0 auto; padding:0 16px;" onclick="addManual()">+ Add</button>
+      </div>
     </div>
   </div>
 
@@ -409,7 +422,7 @@
     const IFOOD_CONFIRM_URL = "https://confirmacao-entrega-propria.ifood.com.br/"; 
     let cropper = null;
 
-    // Estrutura de dados com suporte a Rotas e Minimização
+    // Estrutura de dados com suporte a Rotas, Nome e Minimização
     let dadosRotas = JSON.parse(localStorage.getItem('ifood_rotas_app')) || {
       rotaAtiva: "Rota 1",
       rotas: {
@@ -475,13 +488,16 @@
 
         let htmlPedidos = '';
         pedidos.forEach((p, index) => {
+          const nomeClienteHtml = p.cliente ? `<div class="cliente-nome">👤 ${p.cliente}</div>` : '';
+
           htmlPedidos += `
             <div class="card-pedido ${p.status === 'concluido' ? 'concluido' : ''}">
               <div class="card-header">
                 <span class="title">Pedido #${pedidos.length - index}</span>
                 <span class="badge ${p.status}">${p.status === 'pendente' ? '🟢 Pendente' : '✅ Concluído'}</span>
               </div>
-              <div class="localizador-code">${p.codigo}</div>
+              ${nomeClienteHtml}
+              <div class="localizador-code">🔑 ${p.codigo}</div>
               <div class="card-actions">
                 <button class="btn btn-confirmar" onclick="confirmarEntrega('${nomeRota}', ${index})">
                   🚀 CONFIRMAR ENTREGA
@@ -562,7 +578,7 @@
       }
     }
 
-    function adicionarCodigo(codigo) {
+    function adicionarCodigo(codigo, nomeCliente = '') {
       const codLimpo = codigo.replace(/\D/g, '');
       if (codLimpo.length !== 8) return;
 
@@ -587,6 +603,7 @@
       dadosRotas.rotas[rotaAtual].unshift({
         id: Date.now(),
         codigo: codLimpo,
+        cliente: nomeCliente.trim(),
         status: 'pendente'
       });
 
@@ -594,10 +611,13 @@
     }
 
     function addManual() {
-      const input = document.getElementById('manualCode');
-      if (input.value.length === 8) {
-        adicionarCodigo(input.value);
-        input.value = '';
+      const inputCode = document.getElementById('manualCode');
+      const inputCliente = document.getElementById('manualCliente');
+
+      if (inputCode.value.length === 8) {
+        adicionarCodigo(inputCode.value, inputCliente.value);
+        inputCode.value = '';
+        inputCliente.value = '';
       } else {
         alert('O código do localizador deve conter exatamente 8 números.');
       }
@@ -606,6 +626,7 @@
     async function confirmarEntrega(nomeRota, index) {
       const pedido = dadosRotas.rotas[nomeRota][index];
       
+      // Copia SOMENTE os 8 números do localizador
       try {
         await navigator.clipboard.writeText(pedido.codigo);
       } catch (err) {
@@ -684,12 +705,15 @@
         const númerosEncontrados = text.replace(/\D/g, '');
 
         const match = númerosEncontrados.match(/\d{8}/);
+        const nomePreenchido = document.getElementById('manualCliente').value;
 
         if (match) {
-          adicionarCodigo(match[0]);
+          adicionarCodigo(match[0], nomePreenchido);
+          document.getElementById('manualCliente').value = '';
           if (navigator.vibrate) navigator.vibrate(200);
         } else if (númerosEncontrados.length >= 8) {
-          adicionarCodigo(númerosEncontrados.substring(0, 8));
+          adicionarCodigo(númerosEncontrados.substring(0, 8), nomePreenchido);
+          document.getElementById('manualCliente').value = '';
           if (navigator.vibrate) navigator.vibrate(200);
         } else {
           alert('⚠️ Não encontramos os 8 dígitos na área recortada. Ajuste o quadrado cobrindo bem os números.');
