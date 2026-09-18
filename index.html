@@ -485,7 +485,7 @@
           htmlPedidos += `
             <div class="card-pedido ${isConcluido ? 'concluido' : ''}">
               <div class="card-header">
-                <span class="title">Pedido #${pedidos.length - index}</span>
+                <span class="title">Pedido #${index + 1}</span>
                 <span class="badge ${p.status}">${isConcluido ? '✅ Concluído' : '🟢 Pendente'}</span>
               </div>
               ${p.cliente ? `<div class="cliente-nome">👤 ${p.cliente}</div>` : ''}
@@ -586,7 +586,8 @@
         }
       }
 
-      dadosRotas.rotas[rotaAtual].unshift({
+      // Adiciona no final da lista para manter a ordem crescente (1, 2, 3...)
+      dadosRotas.rotas[rotaAtual].push({
         id: Date.now(),
         codigo: codLimpo,
         cliente: nomeCliente.trim(),
@@ -612,7 +613,6 @@
     async function confirmarEntrega(event, nomeRota, index) {
       const pedido = dadosRotas.rotas[nomeRota][index];
       
-      // Copia o código para a área de transferência
       try {
         await navigator.clipboard.writeText(pedido.codigo);
       } catch (err) {
@@ -624,11 +624,8 @@
         document.body.removeChild(textArea);
       }
 
-      // Marca o pedido como concluído
       dadosRotas.rotas[nomeRota][index].status = 'concluido';
       localStorage.setItem('ifood_rotas_app', JSON.stringify(dadosRotas));
-      
-      // Não cancelamos a navegação padrão do link <a>, permitindo que o navegador abra o link sem bloquear
     }
 
     function excluirPedido(nomeRota, index) {
