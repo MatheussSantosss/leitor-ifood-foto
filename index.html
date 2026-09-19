@@ -209,6 +209,16 @@
       margin-top: 2px;
     }
 
+    .comanda-foto-thumb {
+      width: 100%;
+      max-height: 140px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+
     .badge {
       font-size: 0.75rem;
       padding: 3px 8px;
@@ -297,8 +307,8 @@
       margin-top: 40px;
     }
 
-    /* Modal para Cortar a Imagem */
-    #crop-modal {
+    /* Modais */
+    #crop-modal, #photo-view-modal {
       display: none;
       position: fixed;
       top: 0;
@@ -327,6 +337,20 @@
       display: flex;
       gap: 12px;
       background: #111;
+    }
+
+    .photo-view-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+
+    .photo-view-container img {
+      max-width: 100%;
+      max-height: 85vh;
+      border-radius: 8px;
     }
 
     .btn-cancelar {
@@ -413,6 +437,13 @@
     </div>
   </div>
 
+  <!-- Modal para Visualizar Foto Expandida -->
+  <div id="photo-view-modal" onclick="fecharFotoModal()">
+    <div class="photo-view-container">
+      <img id="image-expanded" src="" alt="Comanda Expandida" />
+    </div>
+  </div>
+
   <div id="loading-overlay">
     <div class="spinner"></div>
     <p>Lendo seleção...</p>
@@ -496,6 +527,7 @@
               </div>
               ${p.cliente ? `<div class="cliente-nome">👤 ${p.cliente}</div>` : ''}
               <div class="localizador-code">${p.codigo}</div>
+              ${p.foto ? `<img src="${p.foto}" class="comanda-foto-thumb" alt="Foto Comanda" onclick="abrirFotoModal('${p.foto}')" />` : ''}
               <div class="card-actions">
                 <a href="${IFOOD_CONFIRM_URL}" target="_blank" rel="noopener noreferrer" class="btn ${isConcluido ? 'btn-concluido' : 'btn-confirmar'}" onclick="confirmarEntrega(event, '${nomeRota}', ${index})">
                   ${isConcluido ? '✅ COPIADO (REABRIR)' : '🚀 CONFIRMAR ENTREGA'}
@@ -576,7 +608,7 @@
       }
     }
 
-    function adicionarCodigo(codigo, nomeCliente = '') {
+    function adicionarCodigo(codigo, nomeCliente = '', fotoBase64 = null) {
       const codLimpo = codigo.replace(/\D/g, '');
       if (codLimpo.length !== 8) return;
 
@@ -600,6 +632,7 @@
         id: Date.now(),
         codigo: codLimpo,
         cliente: nomeCliente.trim(),
+        foto: fotoBase64,
         status: 'pendente'
       });
 
@@ -680,6 +713,15 @@
       }
     }
 
+    function abrirFotoModal(src) {
+      document.getElementById('image-expanded').src = src;
+      document.getElementById('photo-view-modal').style.display = 'flex';
+    }
+
+    function fecharFotoModal() {
+      document.getElementById('photo-view-modal').style.display = 'none';
+    }
+
     async function processarCorte() {
       if (!cropper) return;
 
@@ -690,6 +732,8 @@
         maxWidth: 800,
         maxHeight: 800
       });
+
+      const fotoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
 
       fecharCropModal();
 
@@ -708,7 +752,7 @@
 
         if (codigoExtraido) {
           const nomePrompt = prompt("Digite o nome do cliente (opcional):", "") || "";
-          adicionarCodigo(codigoExtraido, nomePrompt);
+          adicionarCodigo(codigoExtraido, nomePrompt, fotoDataUrl);
           if (navigator.vibrate) navigator.vibrate(200);
         } else {
           alert('⚠️ Não encontramos os 8 dígitos na área recortada. Ajuste o quadrado cobrindo bem os números.');
