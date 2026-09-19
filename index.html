@@ -3,10 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gerenciador de Pedidos por Comanda</title>
-  
-  <!-- CSS do CropperJS para seleção/corte da imagem -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
+  <title>Gestor de Pedidos por Comanda</title>
 
   <style>
     * {
@@ -38,7 +35,7 @@
       color: #666;
     }
 
-    /* Painel de Controle de Rota & Captura */
+    /* Painel Superior de Adição */
     .rota-control-box {
       background: #fff;
       padding: 14px;
@@ -85,51 +82,66 @@
       cursor: pointer;
     }
 
-    /* Botão Principal de Foto no Painel Superior */
-    .btn-tirar-foto-top {
+    .inputs-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .input-localizador {
       width: 100%;
-      padding: 16px;
-      background: #ea1d2c;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      font-size: 1.05rem;
+      padding: 12px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 1.1rem;
       font-weight: bold;
-      box-shadow: 0 4px 10px rgba(234, 29, 44, 0.3);
+      text-align: center;
+      letter-spacing: 2px;
+    }
+
+    .input-localizador:focus {
+      border-color: #ea1d2c;
+      outline: none;
+    }
+
+    .foto-and-add-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-tirar-foto {
+      flex: 1;
+      padding: 12px;
+      background: #f0f0f5;
+      border: 2px dashed #ea1d2c;
+      color: #ea1d2c;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: bold;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-    }
-
-    .btn-manual-toggle {
-      background: none;
-      border: none;
-      color: #666;
-      font-size: 0.8rem;
-      text-decoration: underline;
-      cursor: pointer;
+      gap: 6px;
       text-align: center;
-      margin-top: -4px;
     }
 
-    .manual-input-box {
-      display: none;
-      gap: 8px;
-      margin-top: 4px;
+    .btn-tirar-foto.tem-foto {
+      background: #d4edda;
+      border-color: #2e7d32;
+      border-style: solid;
+      color: #155724;
     }
 
-    .manual-input-box.ativo {
-      display: flex;
-    }
-
-    .manual-input-box input {
-      flex: 1;
-      padding: 10px;
-      border: 1px solid #ddd;
+    .btn-salvar-pedido {
+      background: #ea1d2c;
+      color: white;
+      border: none;
+      padding: 12px 20px;
       border-radius: 8px;
-      font-size: 0.95rem;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
     }
 
     /* Estilos das Rotas e Cards */
@@ -320,8 +332,8 @@
       margin-top: 40px;
     }
 
-    /* Modais */
-    #crop-modal, #photo-view-modal {
+    /* Modal de Visualização Expandida da Foto */
+    #photo-view-modal {
       display: none;
       position: fixed;
       top: 0;
@@ -331,25 +343,6 @@
       background: rgba(0, 0, 0, 0.95);
       z-index: 1500;
       flex-direction: column;
-    }
-
-    .crop-container {
-      flex: 1;
-      position: relative;
-      background: #000;
-      max-height: 80vh;
-    }
-
-    .crop-container img {
-      max-width: 100%;
-      display: block;
-    }
-
-    .crop-actions {
-      padding: 16px;
-      display: flex;
-      gap: 12px;
-      background: #111;
     }
 
     .photo-view-container {
@@ -365,49 +358,13 @@
       max-height: 85vh;
       border-radius: 8px;
     }
-
-    .btn-cancelar {
-      background: #444;
-      color: white;
-    }
-
-    #loading-overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.85);
-      z-index: 2000;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 1.2rem;
-    }
-
-    .spinner {
-      border: 4px solid rgba(255, 255, 255, 0.3);
-      border-radius: 50%;
-      border-top: 4px solid #ea1d2c;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-      margin-bottom: 16px;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
   </style>
 </head>
 <body>
 
   <header>
     <h1>🛵 Gestor de Pedidos por Comanda</h1>
-    <p>Tire a foto da comanda para ler o localizador e exibir o açaí</p>
+    <p>Digite o localizador e tire a foto da comanda do açaí</p>
   </header>
 
   <!-- Painel Superior -->
@@ -421,34 +378,23 @@
       <button class="btn-nova-rota" onclick="criarNovaRota()">+ Nova Rota</button>
     </div>
 
-    <!-- Botão Principal de Foto -->
-    <button class="btn-tirar-foto-top" onclick="abrirCameraFoto()">
-      📸 TIRAR / ENVIAR FOTO DA COMANDA
-    </button>
-    <input type="file" id="fotoInput" accept="image/*" capture="environment" style="display: none;" onchange="carregarImagemParaCorte(event)" />
+    <!-- Entradas de Dados -->
+    <div class="inputs-wrapper">
+      <input type="number" id="manualCode" class="input-localizador" placeholder="DIGITE O LOCALIZADOR (8 DÍGITOS)" maxlength="8" />
+      
+      <div class="foto-and-add-row">
+        <label for="fotoInput" id="btnFotoLabel" class="btn-tirar-foto">
+          📷 Tirar Foto da Comanda
+        </label>
+        <input type="file" id="fotoInput" accept="image/*" capture="environment" style="display: none;" onchange="capturarFotoComanda(event)" />
 
-    <!-- Entrada Manual Opcional (Caso o OCR falhe ou queira digitar) -->
-    <button class="btn-manual-toggle" onclick="toggleInputManual()">Ou digite o localizador manualmente</button>
-    
-    <div class="manual-input-box" id="manualInputBox">
-      <input type="number" id="manualCode" placeholder="Digitar 8 dígitos do localizador..." maxlength="8" />
-      <button class="btn btn-confirmar" style="flex:0 0 auto; padding:0 16px;" onclick="addManual()">+ Add</button>
+        <button class="btn-salvar-pedido" onclick="salvarNovoPedido()">+ Salvar</button>
+      </div>
     </div>
   </div>
 
   <!-- Lista de Rotas e Pedidos -->
   <div id="rotasContainer"></div>
-
-  <!-- Modal de Recorte para identificar o código -->
-  <div id="crop-modal">
-    <div class="crop-container">
-      <img id="image-to-crop" src="" alt="Comanda" />
-    </div>
-    <div class="crop-actions">
-      <button class="btn btn-cancelar" onclick="fecharCropModal()">Cancelar</button>
-      <button class="btn btn-confirmar" onclick="processarCorte()">🔍 IDENTIFICAR LOCALIZADOR</button>
-    </div>
-  </div>
 
   <!-- Modal para Visualizar Foto Expandida da Comanda -->
   <div id="photo-view-modal" onclick="fecharFotoModal()">
@@ -457,20 +403,9 @@
     </div>
   </div>
 
-  <!-- Overlay de Carregamento -->
-  <div id="loading-overlay">
-    <div class="spinner"></div>
-    <p>Lendo comanda e extraindo localizador...</p>
-  </div>
-
-  <!-- Scripts: CropperJS + TesseractJS -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
   <script>
     const IFOOD_CONFIRM_URL = "https://confirmacao-entrega-propria.ifood.com.br/"; 
-    let cropper = null;
-    let tempFotoOriginalComanda = null;
+    let tempFotoBase64 = null;
 
     let dadosRotas = JSON.parse(localStorage.getItem('ifood_rotas_app')) || {
       rotaAtiva: "Rota 1",
@@ -518,7 +453,7 @@
       const nomesRotas = Object.keys(dadosRotas.rotas).reverse();
 
       if (nomesRotas.length === 0 || nomesRotas.every(r => dadosRotas.rotas[r].length === 0)) {
-        container.innerHTML = `<div class="empty-state"><p>Nenhum pedido adicionado nesta rota.</p><p>Clique no botão acima para tirar a foto da comanda.</p></div>`;
+        container.innerHTML = `<div class="empty-state"><p>Nenhum pedido adicionado nesta rota.</p><p>Digite o localizador e adicione a foto acima.</p></div>`;
       }
 
       nomesRotas.forEach(nomeRota => {
@@ -632,27 +567,38 @@
       }
     }
 
-    function toggleInputManual() {
-      const box = document.getElementById('manualInputBox');
-      box.classList.toggle('ativo');
+    function capturarFotoComanda(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        tempFotoBase64 = e.target.result;
+        const btnLabel = document.getElementById('btnFotoLabel');
+        btnLabel.classList.add('tem-foto');
+        btnLabel.innerHTML = '✅ Foto Anexada';
+      };
+      reader.readAsDataURL(file);
     }
 
-    function adicionarCodigo(codigo, fotoBase64 = null) {
-      const codLimpo = codigo.replace(/\D/g, '');
-      if (codLimpo.length !== 8) return;
+    function salvarNovoPedido() {
+      const inputCode = document.getElementById('manualCode');
+      const codLimpo = inputCode.value.replace(/\D/g, '');
+
+      if (codLimpo.length !== 8) {
+        alert('Por favor, digite os 8 dígitos do localizador.');
+        return;
+      }
 
       const rotaAtual = dadosRotas.rotaAtiva;
       if (!dadosRotas.rotas[rotaAtual]) {
         dadosRotas.rotas[rotaAtual] = [];
       }
 
-      if (dadosRotas.minimizadas[rotaAtual]) {
-        delete dadosRotas.minimizadas[rotaAtual];
-      }
-
+      // Verifica se o código já existe em alguma rota
       for (let r in dadosRotas.rotas) {
         if (dadosRotas.rotas[r].some(p => p.codigo === codLimpo)) {
-          alert(`Este código (${codLimpo}) já foi adicionado na ${r}.`);
+          alert(`Este localizador (${codLimpo}) já foi adicionado na ${r}.`);
           return;
         }
       }
@@ -660,23 +606,20 @@
       dadosRotas.rotas[rotaAtual].push({
         id: Date.now(),
         codigo: codLimpo,
-        foto: fotoBase64,
+        foto: tempFotoBase64,
         status: 'pendente'
       });
 
+      // Limpar formulário do topo
+      inputCode.value = '';
+      tempFotoBase64 = null;
+      document.getElementById('fotoInput').value = '';
+
+      const btnLabel = document.getElementById('btnFotoLabel');
+      btnLabel.classList.remove('tem-foto');
+      btnLabel.innerHTML = '📷 Tirar Foto da Comanda';
+
       salvar();
-    }
-
-    function addManual() {
-      const inputCode = document.getElementById('manualCode');
-
-      if (inputCode.value.length === 8) {
-        adicionarCodigo(inputCode.value, null);
-        inputCode.value = '';
-        document.getElementById('manualInputBox').classList.remove('ativo');
-      } else {
-        alert('O código do localizador deve conter exatamente 8 números.');
-      }
     }
 
     async function confirmarEntrega(event, nomeRota, index) {
@@ -702,45 +645,6 @@
       salvar();
     }
 
-    function abrirCameraFoto() {
-      document.getElementById('fotoInput').click();
-    }
-
-    function carregarImagemParaCorte(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        tempFotoOriginalComanda = e.target.result;
-        const image = document.getElementById('image-to-crop');
-        image.src = tempFotoOriginalComanda;
-
-        document.getElementById('crop-modal').style.display = 'flex';
-
-        if (cropper) {
-          cropper.destroy();
-        }
-
-        cropper = new Cropper(image, {
-          viewMode: 1,
-          autoCropArea: 0.5,
-          responsive: true
-        });
-      };
-
-      reader.readAsDataURL(file);
-    }
-
-    function fecharCropModal() {
-      document.getElementById('crop-modal').style.display = 'none';
-      document.getElementById('fotoInput').value = '';
-      if (cropper) {
-        cropper.destroy();
-        cropper = null;
-      }
-    }
-
     function abrirFotoModal(src) {
       document.getElementById('image-expanded').src = src;
       document.getElementById('photo-view-modal').style.display = 'flex';
@@ -748,46 +652,6 @@
 
     function fecharFotoModal() {
       document.getElementById('photo-view-modal').style.display = 'none';
-    }
-
-    async function processarCorte() {
-      if (!cropper) return;
-
-      const loading = document.getElementById('loading-overlay');
-      loading.style.display = 'flex';
-
-      const canvas = cropper.getCroppedCanvas({
-        maxWidth: 800,
-        maxHeight: 800
-      });
-
-      fecharCropModal();
-
-      try {
-        const { data: { text } } = await Tesseract.recognize(canvas, 'eng');
-        const númerosEncontrados = text.replace(/\D/g, '');
-
-        const match = númerosEncontrados.match(/\d{8}/);
-        let codigoExtraido = null;
-
-        if (match) {
-          codigoExtraido = match[0];
-        } else if (númerosEncontrados.length >= 8) {
-          codigoExtraido = númerosEncontrados.substring(0, 8);
-        }
-
-        if (codigoExtraido) {
-          adicionarCodigo(codigoExtraido, tempFotoOriginalComanda);
-          if (navigator.vibrate) navigator.vibrate(200);
-        } else {
-          alert('⚠️ Não foi possível identificar os 8 dígitos na área recortada. Tente recortar cobrindo exatamente a região do número do localizador.');
-        }
-      } catch (err) {
-        alert('Erro ao processar a imagem da comanda.');
-      } finally {
-        loading.style.display = 'none';
-        tempFotoOriginalComanda = null;
-      }
     }
 
     render();
