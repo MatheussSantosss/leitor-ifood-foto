@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gerenciador de Pedidos por Rota (iFood)</title>
+  <title>Gerenciador de Pedidos por Comanda</title>
   
-  <!-- CSS do CropperJS para seleção da área -->
+  <!-- CSS do CropperJS para seleção/corte da imagem -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
 
   <style>
@@ -20,7 +20,7 @@
       background-color: #f4f4f6;
       color: #333;
       padding: 16px;
-      padding-bottom: 110px;
+      padding-bottom: 40px;
     }
 
     header {
@@ -38,16 +38,16 @@
       color: #666;
     }
 
-    /* Painel de Controle de Rota */
+    /* Painel de Controle de Rota & Captura */
     .rota-control-box {
       background: #fff;
-      padding: 12px;
+      padding: 14px;
       border-radius: 12px;
-      margin-bottom: 14px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
     }
 
     .rota-select-wrapper {
@@ -85,47 +85,51 @@
       cursor: pointer;
     }
 
-    .manual-input-box {
+    /* Botão Principal de Foto no Painel Superior */
+    .btn-tirar-foto-top {
+      width: 100%;
+      padding: 16px;
+      background: #ea1d2c;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.05rem;
+      font-weight: bold;
+      box-shadow: 0 4px 10px rgba(234, 29, 44, 0.3);
+      cursor: pointer;
       display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .input-row {
-      display: flex;
-      gap: 8px;
       align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
 
-    .manual-input-box input[type="text"],
-    .manual-input-box input[type="number"] {
+    .btn-manual-toggle {
+      background: none;
+      border: none;
+      color: #666;
+      font-size: 0.8rem;
+      text-decoration: underline;
+      cursor: pointer;
+      text-align: center;
+      margin-top: -4px;
+    }
+
+    .manual-input-box {
+      display: none;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .manual-input-box.ativo {
+      display: flex;
+    }
+
+    .manual-input-box input {
       flex: 1;
       padding: 10px;
       border: 1px solid #ddd;
       border-radius: 8px;
       font-size: 0.95rem;
-    }
-
-    .btn-upload-foto {
-      background: #f0f0f5;
-      border: 1px dashed #ea1d2c;
-      color: #ea1d2c;
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      font-weight: bold;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      text-align: center;
-    }
-
-    .btn-upload-foto.tem-foto {
-      background: #d4edda;
-      border-color: #2e7d32;
-      color: #155724;
     }
 
     /* Estilos das Rotas e Cards */
@@ -144,7 +148,6 @@
       justify-content: space-between;
       align-items: center;
       cursor: pointer;
-      transition: background 0.3s ease;
     }
 
     .rota-header.concluida {
@@ -191,7 +194,7 @@
       border-radius: 0 0 10px 10px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
     }
 
     .rota-body.oculto {
@@ -205,7 +208,7 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.05);
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
       border-left: 5px solid #ffaa00;
     }
 
@@ -222,29 +225,8 @@
 
     .card-header .title {
       font-weight: bold;
-      font-size: 0.9rem;
-      color: #555;
-    }
-
-    .cliente-nome {
-      font-size: 1.05rem;
-      font-weight: bold;
-      color: #ea1d2c;
-      margin-top: 2px;
-    }
-
-    .comanda-foto-wrapper {
-      margin-top: 6px;
-    }
-
-    .comanda-foto-thumb {
-      width: 100%;
-      max-height: 180px;
-      object-fit: contain;
-      background: #000;
-      border-radius: 8px;
-      border: 1px solid #ddd;
-      cursor: pointer;
+      font-size: 0.85rem;
+      color: #666;
     }
 
     .badge {
@@ -264,11 +246,35 @@
       color: #155724;
     }
 
+    .localizador-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #f8f9fa;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px dashed #ccc;
+    }
+
     .localizador-code {
       font-size: 1.3rem;
       font-weight: bold;
       letter-spacing: 2px;
       color: #111;
+    }
+
+    .comanda-foto-wrapper {
+      width: 100%;
+    }
+
+    .comanda-foto-thumb {
+      width: 100%;
+      max-height: 250px;
+      object-fit: contain;
+      background: #111;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      cursor: pointer;
     }
 
     .card-actions {
@@ -306,27 +312,6 @@
       background: #f1f1f1;
       color: #cc0000;
       flex: 0 0 44px;
-    }
-
-    .footer-actions {
-      position: fixed;
-      bottom: 16px;
-      left: 16px;
-      right: 16px;
-      z-index: 1000;
-    }
-
-    .btn-escanear-fixo {
-      width: 100%;
-      padding: 16px;
-      background: #ea1d2c;
-      color: white;
-      border: none;
-      border-radius: 30px;
-      font-size: 1.1rem;
-      font-weight: bold;
-      box-shadow: 0 4px 12px rgba(234, 29, 44, 0.4);
-      cursor: pointer;
     }
 
     .empty-state {
@@ -421,12 +406,13 @@
 <body>
 
   <header>
-    <h1>🛵 Pedidos iFood (Por Rota)</h1>
-    <p>Selecione a Rota e adicione os localizadores</p>
+    <h1>🛵 Gestor de Pedidos por Comanda</h1>
+    <p>Tire a foto da comanda para ler o localizador e exibir o açaí</p>
   </header>
 
-  <!-- Seletor de Rota Ativa & Entrada -->
+  <!-- Painel Superior -->
   <div class="rota-control-box">
+    <!-- Seletor de Rota -->
     <div class="rota-select-wrapper">
       <label for="selectRota">Adicionar em:</label>
       <select id="selectRota" class="select-rota" onchange="alterarRotaAtiva(this.value)">
@@ -435,41 +421,32 @@
       <button class="btn-nova-rota" onclick="criarNovaRota()">+ Nova Rota</button>
     </div>
 
-    <div class="manual-input-box">
-      <input type="text" id="clienteNomeInput" placeholder="Nome do Cliente (opcional)..." />
-      
-      <!-- Entrada do Localizador e Foto Opcional -->
-      <div class="input-row">
-        <input type="number" id="manualCode" placeholder="Digitar 8 dígitos..." maxlength="8" />
-        
-        <label for="fotoManualInput" id="btnFotoLabel" class="btn-upload-foto">
-          📷 Foto
-        </label>
-        <input type="file" id="fotoManualInput" accept="image/*" style="display: none;" onchange="selecionarFotoManual(event)" />
+    <!-- Botão Principal de Foto -->
+    <button class="btn-tirar-foto-top" onclick="abrirCameraFoto()">
+      📸 TIRAR / ENVIAR FOTO DA COMANDA
+    </button>
+    <input type="file" id="fotoInput" accept="image/*" capture="environment" style="display: none;" onchange="carregarImagemParaCorte(event)" />
 
-        <button class="btn btn-confirmar" style="flex:0 0 auto; padding:0 16px;" onclick="addManual()">+ Add</button>
-      </div>
+    <!-- Entrada Manual Opcional (Caso o OCR falhe ou queira digitar) -->
+    <button class="btn-manual-toggle" onclick="toggleInputManual()">Ou digite o localizador manualmente</button>
+    
+    <div class="manual-input-box" id="manualInputBox">
+      <input type="number" id="manualCode" placeholder="Digitar 8 dígitos do localizador..." maxlength="8" />
+      <button class="btn btn-confirmar" style="flex:0 0 auto; padding:0 16px;" onclick="addManual()">+ Add</button>
     </div>
   </div>
 
   <!-- Lista de Rotas e Pedidos -->
   <div id="rotasContainer"></div>
 
-  <!-- Botão Fixo de Tirar Foto e Ler OCR -->
-  <div class="footer-actions">
-    <button class="btn-escanear-fixo" onclick="abrirCameraFoto()">📸 LER CÓDIGO POR FOTO DA COMANDA</button>
-  </div>
-
-  <input type="file" id="fotoInput" accept="image/*" capture="environment" style="display: none;" onchange="carregarImagemParaCorte(event)" />
-
-  <!-- Tela de Recorte da Foto -->
+  <!-- Modal de Recorte para identificar o código -->
   <div id="crop-modal">
     <div class="crop-container">
       <img id="image-to-crop" src="" alt="Comanda" />
     </div>
     <div class="crop-actions">
       <button class="btn btn-cancelar" onclick="fecharCropModal()">Cancelar</button>
-      <button class="btn btn-confirmar" onclick="processarCorte()">🔍 LER CÓDIGO CORTADO</button>
+      <button class="btn btn-confirmar" onclick="processarCorte()">🔍 IDENTIFICAR LOCALIZADOR</button>
     </div>
   </div>
 
@@ -480,9 +457,10 @@
     </div>
   </div>
 
+  <!-- Overlay de Carregamento -->
   <div id="loading-overlay">
     <div class="spinner"></div>
-    <p>Lendo seleção...</p>
+    <p>Lendo comanda e extraindo localizador...</p>
   </div>
 
   <!-- Scripts: CropperJS + TesseractJS -->
@@ -492,7 +470,6 @@
   <script>
     const IFOOD_CONFIRM_URL = "https://confirmacao-entrega-propria.ifood.com.br/"; 
     let cropper = null;
-    let tempFotoManualBase64 = null;
     let tempFotoOriginalComanda = null;
 
     let dadosRotas = JSON.parse(localStorage.getItem('ifood_rotas_app')) || {
@@ -541,7 +518,7 @@
       const nomesRotas = Object.keys(dadosRotas.rotas).reverse();
 
       if (nomesRotas.length === 0 || nomesRotas.every(r => dadosRotas.rotas[r].length === 0)) {
-        container.innerHTML = `<div class="empty-state"><p>Nenhum pedido escaneado ainda.</p><p>Escolha a Rota e adicione os pedidos</p></div>`;
+        container.innerHTML = `<div class="empty-state"><p>Nenhum pedido adicionado nesta rota.</p><p>Clique no botão acima para tirar a foto da comanda.</p></div>`;
       }
 
       nomesRotas.forEach(nomeRota => {
@@ -563,13 +540,18 @@
                 <span class="title">Pedido #${index + 1}</span>
                 <span class="badge ${p.status}">${isConcluido ? '✅ Concluído' : '🟢 Pendente'}</span>
               </div>
-              ${p.cliente ? `<div class="cliente-nome">👤 ${p.cliente}</div>` : ''}
-              <div class="localizador-code">${p.codigo}</div>
+
+              <div class="localizador-box">
+                <span style="font-size:0.8rem; color:#666;">Localizador:</span>
+                <span class="localizador-code">${p.codigo}</span>
+              </div>
+
               ${p.foto ? `
                 <div class="comanda-foto-wrapper">
-                  <img src="${p.foto}" class="comanda-foto-thumb" alt="Foto Comanda" onclick="abrirFotoModal('${p.foto}')" title="Clique para expandir" />
+                  <img src="${p.foto}" class="comanda-foto-thumb" alt="Foto Comanda" onclick="abrirFotoModal('${p.foto}')" title="Clique para expandir a foto da comanda" />
                 </div>
               ` : ''}
+
               <div class="card-actions">
                 <a href="${IFOOD_CONFIRM_URL}" target="_blank" rel="noopener noreferrer" class="btn ${isConcluido ? 'btn-concluido' : 'btn-confirmar'}" onclick="confirmarEntrega(event, '${nomeRota}', ${index})">
                   ${isConcluido ? '✅ COPIADO (REABRIR)' : '🚀 CONFIRMAR ENTREGA'}
@@ -650,21 +632,12 @@
       }
     }
 
-    function selecionarFotoManual(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        tempFotoManualBase64 = e.target.result;
-        const btnLabel = document.getElementById('btnFotoLabel');
-        btnLabel.classList.add('tem-foto');
-        btnLabel.innerHTML = '✅ Foto Anexada';
-      };
-      reader.readAsDataURL(file);
+    function toggleInputManual() {
+      const box = document.getElementById('manualInputBox');
+      box.classList.toggle('ativo');
     }
 
-    function adicionarCodigo(codigo, nomeCliente = '', fotoBase64 = null) {
+    function adicionarCodigo(codigo, fotoBase64 = null) {
       const codLimpo = codigo.replace(/\D/g, '');
       if (codLimpo.length !== 8) return;
 
@@ -679,7 +652,7 @@
 
       for (let r in dadosRotas.rotas) {
         if (dadosRotas.rotas[r].some(p => p.codigo === codLimpo)) {
-          alert(`Este código já foi adicionado na ${r}.`);
+          alert(`Este código (${codLimpo}) já foi adicionado na ${r}.`);
           return;
         }
       }
@@ -687,7 +660,6 @@
       dadosRotas.rotas[rotaAtual].push({
         id: Date.now(),
         codigo: codLimpo,
-        cliente: nomeCliente.trim(),
         foto: fotoBase64,
         status: 'pendente'
       });
@@ -697,19 +669,11 @@
 
     function addManual() {
       const inputCode = document.getElementById('manualCode');
-      const inputNome = document.getElementById('clienteNomeInput');
 
       if (inputCode.value.length === 8) {
-        adicionarCodigo(inputCode.value, inputNome.value, tempFotoManualBase64);
-        
-        // Reset campos
+        adicionarCodigo(inputCode.value, null);
         inputCode.value = '';
-        inputNome.value = '';
-        tempFotoManualBase64 = null;
-        document.getElementById('fotoManualInput').value = '';
-        const btnLabel = document.getElementById('btnFotoLabel');
-        btnLabel.classList.remove('tem-foto');
-        btnLabel.innerHTML = '📷 Foto';
+        document.getElementById('manualInputBox').classList.remove('ativo');
       } else {
         alert('O código do localizador deve conter exatamente 8 números.');
       }
@@ -813,14 +777,13 @@
         }
 
         if (codigoExtraido) {
-          const nomePrompt = prompt("Digite o nome do cliente (opcional):", "") || "";
-          adicionarCodigo(codigoExtraido, nomePrompt, tempFotoOriginalComanda);
+          adicionarCodigo(codigoExtraido, tempFotoOriginalComanda);
           if (navigator.vibrate) navigator.vibrate(200);
         } else {
-          alert('⚠️ Não encontramos os 8 dígitos na área recortada. Ajuste o quadrado cobrindo bem os números.');
+          alert('⚠️ Não foi possível identificar os 8 dígitos na área recortada. Tente recortar cobrindo exatamente a região do número do localizador.');
         }
       } catch (err) {
-        alert('Erro ao processar a imagem cortada.');
+        alert('Erro ao processar a imagem da comanda.');
       } finally {
         loading.style.display = 'none';
         tempFotoOriginalComanda = null;
