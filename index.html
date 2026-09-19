@@ -94,14 +94,38 @@
     .input-row {
       display: flex;
       gap: 8px;
+      align-items: center;
     }
 
-    .manual-input-box input {
+    .manual-input-box input[type="text"],
+    .manual-input-box input[type="number"] {
       flex: 1;
       padding: 10px;
       border: 1px solid #ddd;
       border-radius: 8px;
       font-size: 0.95rem;
+    }
+
+    .btn-upload-foto {
+      background: #f0f0f5;
+      border: 1px dashed #ea1d2c;
+      color: #ea1d2c;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-align: center;
+    }
+
+    .btn-upload-foto.tem-foto {
+      background: #d4edda;
+      border-color: #2e7d32;
+      color: #155724;
     }
 
     /* Estilos das Rotas e Cards */
@@ -209,14 +233,18 @@
       margin-top: 2px;
     }
 
+    .comanda-foto-wrapper {
+      margin-top: 6px;
+    }
+
     .comanda-foto-thumb {
       width: 100%;
-      max-height: 140px;
-      object-fit: cover;
+      max-height: 180px;
+      object-fit: contain;
+      background: #000;
       border-radius: 8px;
       border: 1px solid #ddd;
       cursor: pointer;
-      margin-top: 4px;
     }
 
     .badge {
@@ -409,8 +437,16 @@
 
     <div class="manual-input-box">
       <input type="text" id="clienteNomeInput" placeholder="Nome do Cliente (opcional)..." />
+      
+      <!-- Entrada do Localizador e Foto Opcional -->
       <div class="input-row">
         <input type="number" id="manualCode" placeholder="Digitar 8 dígitos..." maxlength="8" />
+        
+        <label for="fotoManualInput" id="btnFotoLabel" class="btn-upload-foto">
+          📷 Foto
+        </label>
+        <input type="file" id="fotoManualInput" accept="image/*" style="display: none;" onchange="selecionarFotoManual(event)" />
+
         <button class="btn btn-confirmar" style="flex:0 0 auto; padding:0 16px;" onclick="addManual()">+ Add</button>
       </div>
     </div>
@@ -419,9 +455,9 @@
   <!-- Lista de Rotas e Pedidos -->
   <div id="rotasContainer"></div>
 
-  <!-- Botão Fixo de Tirar Foto -->
+  <!-- Botão Fixo de Tirar Foto e Ler OCR -->
   <div class="footer-actions">
-    <button class="btn-escanear-fixo" onclick="abrirCameraFoto()">📸 TIRAR FOTO DA COMANDA</button>
+    <button class="btn-escanear-fixo" onclick="abrirCameraFoto()">📸 LER CÓDIGO POR FOTO DA COMANDA</button>
   </div>
 
   <input type="file" id="fotoInput" accept="image/*" capture="environment" style="display: none;" onchange="carregarImagemParaCorte(event)" />
@@ -437,7 +473,7 @@
     </div>
   </div>
 
-  <!-- Modal para Visualizar Foto Expandida -->
+  <!-- Modal para Visualizar Foto Expandida da Comanda -->
   <div id="photo-view-modal" onclick="fecharFotoModal()">
     <div class="photo-view-container">
       <img id="image-expanded" src="" alt="Comanda Expandida" />
@@ -456,6 +492,8 @@
   <script>
     const IFOOD_CONFIRM_URL = "https://confirmacao-entrega-propria.ifood.com.br/"; 
     let cropper = null;
+    let tempFotoManualBase64 = null;
+    let tempFotoOriginalComanda = null;
 
     let dadosRotas = JSON.parse(localStorage.getItem('ifood_rotas_app')) || {
       rotaAtiva: "Rota 1",
@@ -503,7 +541,7 @@
       const nomesRotas = Object.keys(dadosRotas.rotas).reverse();
 
       if (nomesRotas.length === 0 || nomesRotas.every(r => dadosRotas.rotas[r].length === 0)) {
-        container.innerHTML = `<div class="empty-state"><p>Nenhum pedido escaneado ainda.</p><p>Escolha a Rota e toque em "TIRAR FOTO DA COMANDA"</p></div>`;
+        container.innerHTML = `<div class="empty-state"><p>Nenhum pedido escaneado ainda.</p><p>Escolha a Rota e adicione os pedidos</p></div>`;
       }
 
       nomesRotas.forEach(nomeRota => {
@@ -527,7 +565,11 @@
               </div>
               ${p.cliente ? `<div class="cliente-nome">👤 ${p.cliente}</div>` : ''}
               <div class="localizador-code">${p.codigo}</div>
-              ${p.foto ? `<img src="${p.foto}" class="comanda-foto-thumb" alt="Foto Comanda" onclick="abrirFotoModal('${p.foto}')" />` : ''}
+              ${p.foto ? `
+                <div class="comanda-foto-wrapper">
+                  <img src="${p.foto}" class="comanda-foto-thumb" alt="Foto Comanda" onclick="abrirFotoModal('${p.foto}')" title="Clique para expandir" />
+                </div>
+              ` : ''}
               <div class="card-actions">
                 <a href="${IFOOD_CONFIRM_URL}" target="_blank" rel="noopener noreferrer" class="btn ${isConcluido ? 'btn-concluido' : 'btn-confirmar'}" onclick="confirmarEntrega(event, '${nomeRota}', ${index})">
                   ${isConcluido ? '✅ COPIADO (REABRIR)' : '🚀 CONFIRMAR ENTREGA'}
@@ -608,6 +650,20 @@
       }
     }
 
+    function selecionarFotoManual(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        tempFotoManualBase64 = e.target.result;
+        const btnLabel = document.getElementById('btnFotoLabel');
+        btnLabel.classList.add('tem-foto');
+        btnLabel.innerHTML = '✅ Foto Anexada';
+      };
+      reader.readAsDataURL(file);
+    }
+
     function adicionarCodigo(codigo, nomeCliente = '', fotoBase64 = null) {
       const codLimpo = codigo.replace(/\D/g, '');
       if (codLimpo.length !== 8) return;
@@ -644,9 +700,16 @@
       const inputNome = document.getElementById('clienteNomeInput');
 
       if (inputCode.value.length === 8) {
-        adicionarCodigo(inputCode.value, inputNome.value);
+        adicionarCodigo(inputCode.value, inputNome.value, tempFotoManualBase64);
+        
+        // Reset campos
         inputCode.value = '';
         inputNome.value = '';
+        tempFotoManualBase64 = null;
+        document.getElementById('fotoManualInput').value = '';
+        const btnLabel = document.getElementById('btnFotoLabel');
+        btnLabel.classList.remove('tem-foto');
+        btnLabel.innerHTML = '📷 Foto';
       } else {
         alert('O código do localizador deve conter exatamente 8 números.');
       }
@@ -685,8 +748,9 @@
 
       const reader = new FileReader();
       reader.onload = function(e) {
+        tempFotoOriginalComanda = e.target.result;
         const image = document.getElementById('image-to-crop');
-        image.src = e.target.result;
+        image.src = tempFotoOriginalComanda;
 
         document.getElementById('crop-modal').style.display = 'flex';
 
@@ -733,8 +797,6 @@
         maxHeight: 800
       });
 
-      const fotoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-
       fecharCropModal();
 
       try {
@@ -752,7 +814,7 @@
 
         if (codigoExtraido) {
           const nomePrompt = prompt("Digite o nome do cliente (opcional):", "") || "";
-          adicionarCodigo(codigoExtraido, nomePrompt, fotoDataUrl);
+          adicionarCodigo(codigoExtraido, nomePrompt, tempFotoOriginalComanda);
           if (navigator.vibrate) navigator.vibrate(200);
         } else {
           alert('⚠️ Não encontramos os 8 dígitos na área recortada. Ajuste o quadrado cobrindo bem os números.');
@@ -761,6 +823,7 @@
         alert('Erro ao processar a imagem cortada.');
       } finally {
         loading.style.display = 'none';
+        tempFotoOriginalComanda = null;
       }
     }
 
