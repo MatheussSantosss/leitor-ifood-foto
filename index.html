@@ -420,7 +420,11 @@
     }
 
     function salvar() {
-      localStorage.setItem('ifood_rotas_app', JSON.stringify(dadosRotas));
+      try {
+        localStorage.setItem('ifood_rotas_app', JSON.stringify(dadosRotas));
+      } catch (e) {
+        alert("Atenção: O armazenamento local está cheio! Limpe as rotas antigas para continuar adicionando.");
+      }
       render();
     }
 
@@ -457,7 +461,7 @@
       }
 
       nomesRotas.forEach(nomeRota => {
-        const pedidos = dadosRotas.rotas[nomeRota];
+        const pedidos = dadosRotas.rotas[nomeRota] || [];
         if (pedidos.length === 0 && nomeRota !== dadosRotas.rotaAtiva) return;
 
         const isMinimizada = !!dadosRotas.minimizadas[nomeRota];
@@ -567,16 +571,33 @@
       }
     }
 
+    /* Redimensiona e compacta a foto da câmera antes de guardar no LocalStorage */
     function capturarFotoComanda(event) {
       const file = event.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
       reader.onload = function(e) {
-        tempFotoBase64 = e.target.result;
-        const btnLabel = document.getElementById('btnFotoLabel');
-        btnLabel.classList.add('tem-foto');
-        btnLabel.innerHTML = '✅ Foto Anexada';
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 600;
+          let scale = MAX_WIDTH / img.width;
+          if (scale > 1) scale = 1;
+
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          tempFotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
+
+          const btnLabel = document.getElementById('btnFotoLabel');
+          btnLabel.classList.add('tem-foto');
+          btnLabel.innerHTML = '✅ Foto Anexada';
+        };
+        img.src = e.target.result;
       };
       reader.readAsDataURL(file);
     }
@@ -595,14 +616,7 @@
         dadosRotas.rotas[rotaAtual] = [];
       }
 
-      // Verifica se o código já existe em alguma rota
-      for (let r in dadosRotas.rotas) {
-        if (dadosRotas.rotas[r].some(p => p.codigo === codLimpo)) {
-          alert(`Este localizador (${codLimpo}) já foi adicionado na ${r}.`);
-          return;
-        }
-      }
-
+      // Adiciona o novo pedido mantendo a lista existente
       dadosRotas.rotas[rotaAtual].push({
         id: Date.now(),
         codigo: codLimpo,
