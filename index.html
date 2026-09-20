@@ -144,7 +144,7 @@
       cursor: pointer;
     }
 
-    /* Estilos das Rotas e Cards */
+    /* Estilos das Rotas e Lista de Cards */
     .rota-group {
       margin-bottom: 16px;
     }
@@ -281,7 +281,7 @@
 
     .comanda-foto-thumb {
       width: 100%;
-      max-height: 250px;
+      max-height: 220px;
       object-fit: contain;
       background: #111;
       border-radius: 8px;
@@ -329,7 +329,7 @@
     .empty-state {
       text-align: center;
       color: #888;
-      margin-top: 40px;
+      margin-top: 30px;
     }
 
     /* Modal de Visualização Expandida da Foto */
@@ -407,6 +407,7 @@
     const IFOOD_CONFIRM_URL = "https://confirmacao-entrega-propria.ifood.com.br/"; 
     let tempFotoBase64 = null;
 
+    // Carrega dados salvos ou inicializa estrutura zerada
     let dadosRotas = JSON.parse(localStorage.getItem('ifood_rotas_app')) || {
       rotaAtiva: "Rota 1",
       rotas: {
@@ -423,7 +424,7 @@
       try {
         localStorage.setItem('ifood_rotas_app', JSON.stringify(dadosRotas));
       } catch (e) {
-        alert("Atenção: O armazenamento local está cheio! Limpe as rotas antigas para continuar adicionando.");
+        alert("Atenção: A memória do navegador encheu! Por favor, clique em 'Limpar Rota X' nas rotas antigas.");
       }
       render();
     }
@@ -437,7 +438,7 @@
       const select = document.getElementById('selectRota');
       select.innerHTML = '';
 
-      const nomesRotas = Object.keys(dadosRotas.rotas).reverse();
+      const nomesRotas = Object.keys(dadosRotas.rotas);
 
       nomesRotas.forEach(nomeRota => {
         const option = document.createElement('option');
@@ -454,15 +455,10 @@
       const container = document.getElementById('rotasContainer');
       container.innerHTML = '';
 
-      const nomesRotas = Object.keys(dadosRotas.rotas).reverse();
-
-      if (nomesRotas.length === 0 || nomesRotas.every(r => dadosRotas.rotas[r].length === 0)) {
-        container.innerHTML = `<div class="empty-state"><p>Nenhum pedido adicionado nesta rota.</p><p>Digite o localizador e adicione a foto acima.</p></div>`;
-      }
+      const nomesRotas = Object.keys(dadosRotas.rotas);
 
       nomesRotas.forEach(nomeRota => {
         const pedidos = dadosRotas.rotas[nomeRota] || [];
-        if (pedidos.length === 0 && nomeRota !== dadosRotas.rotaAtiva) return;
 
         const isMinimizada = !!dadosRotas.minimizadas[nomeRota];
         const rotaTodaConcluida = pedidos.length > 0 && pedidos.every(p => p.status === 'concluido');
@@ -518,7 +514,7 @@
             <button class="btn-excluir-rota" onclick="event.stopPropagation(); excluirRota('${nomeRota}')">Limpar Rota X</button>
           </div>
           <div class="rota-body ${isMinimizada ? 'oculto' : ''}">
-            ${htmlPedidos || '<p style="text-align:center; color:#888; padding:10px; font-size:0.85rem;">Nenhum pedido nesta rota.</p>'}
+            ${htmlPedidos || '<p style="text-align:center; color:#888; padding:10px; font-size:0.85rem;">Nenhum pedido cadastrado nesta rota ainda.</p>'}
           </div>
         `;
 
@@ -571,7 +567,7 @@
       }
     }
 
-    /* Redimensiona e compacta a foto da câmera antes de guardar no LocalStorage */
+    /* Redimensiona e compacta a foto da câmera para não ocupar espaço e evitar falhas de gravação */
     function capturarFotoComanda(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -581,7 +577,7 @@
         const img = new Image();
         img.onload = function() {
           const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 600;
+          const MAX_WIDTH = 400; // Resolução leve e ultra-rápida
           let scale = MAX_WIDTH / img.width;
           if (scale > 1) scale = 1;
 
@@ -591,7 +587,8 @@
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-          tempFotoBase64 = canvas.toDataURL('image/jpeg', 0.6);
+          // Salva foto muito leve (0.5 de qualidade)
+          tempFotoBase64 = canvas.toDataURL('image/jpeg', 0.5);
 
           const btnLabel = document.getElementById('btnFotoLabel');
           btnLabel.classList.add('tem-foto');
@@ -612,11 +609,13 @@
       }
 
       const rotaAtual = dadosRotas.rotaAtiva;
-      if (!dadosRotas.rotas[rotaAtual]) {
+
+      // Garante que o array da rota existe antes de inserir
+      if (!Array.isArray(dadosRotas.rotas[rotaAtual])) {
         dadosRotas.rotas[rotaAtual] = [];
       }
 
-      // Adiciona o novo pedido mantendo a lista existente
+      // Adiciona o novo pedido no final da lista do array
       dadosRotas.rotas[rotaAtual].push({
         id: Date.now(),
         codigo: codLimpo,
@@ -624,7 +623,7 @@
         status: 'pendente'
       });
 
-      // Limpar formulário do topo
+      // Limpar os campos do formulário no topo
       inputCode.value = '';
       tempFotoBase64 = null;
       document.getElementById('fotoInput').value = '';
